@@ -1,0 +1,111 @@
+export const languages = ["ar", "en", "zh"] as const;
+
+export type Language = (typeof languages)[number];
+
+export function isLanguage(value: string | undefined): value is Language {
+  return value === "ar" || value === "en" || value === "zh";
+}
+
+export function directionFor(language: Language) {
+  return language === "ar" ? "rtl" : "ltr";
+}
+
+export type Dictionary = {
+  storeName: string;
+  language: string;
+  menu: string;
+  storeSections: string;
+  groceries: string;
+  dairy: string;
+  produce: string;
+  frozen: string;
+  drinks: string;
+  cartWithCount: string;
+  searchProducts: string;
+  searchPlaceholder: string;
+  searching: string;
+  noResults: string;
+  add: string;
+  addToCart: string;
+  outOfStock: string;
+  productImage: string;
+  categories: string;
+  all: string;
+  products: string;
+  loadingProducts: string;
+  emptyTitle: string;
+  emptySubtitle: string;
+  browseAll: string;
+  loadMore: string;
+  loading: string;
+  cartTitle: string;
+  closeCart: string;
+  close: string;
+  cartEmpty: string;
+  decreaseQuantity: string;
+  increaseQuantity: string;
+  removeItem: string;
+  total: string;
+  checkout: string;
+  checkoutTitle: string;
+  checkoutIntro: string;
+  orderReceived: string;
+  fullName: string;
+  phone: string;
+  phonePlaceholder: string;
+  deliveryArea: string;
+  addressDetails: string;
+  addressPlaceholder: string;
+  addressRequired: string;
+  submittingOrder: string;
+  confirmOrder: string;
+  orderSummary: string;
+  subtotal: string;
+  shippingFee: string;
+  finalTotal: string;
+  areaTeda: string;
+  areaPorto: string;
+  areaStella: string;
+  areaTelal: string;
+  orderUnauthorized: string;
+  orderUnavailable: string;
+  orderInvalid: string;
+  orderFailed: string;
+  currency: string;
+  exclusiveOffers: string;
+  weeklyOffersTitle: string;
+  heroSubtitle: string;
+  shopNow: string;
+  contactUs: string;
+  contactBody: string;
+  whatsapp: string;
+  tedaService: string;
+  privateSedan: string;
+  tedaBody: string;
+  login: string;
+  loginTitle: string;
+  loginSubtitle: string;
+  loginSubmit: string;
+  loginPending: string;
+  loginInvalidPhone: string;
+  loginFailed: string;
+  pointsBadge: string;
+  logout: string;
+  earnPoints: string;
+  earnOnOrder: string;
+  redeemPoints: string;
+  pointsWorth: string;
+  pointsDiscount: string;
+  orderPoints: string;
+  loyaltyCard: string;
+  loyaltyCardHint: string;
+  brands: string;
+  shopByBrand: string;
+  shopByCategory: string;
+  featuredProducts: string;
+  shop: string;
+  home: string;
+  offers: string;
+};
+
+export type TranslationKey = keyof Dictionary;

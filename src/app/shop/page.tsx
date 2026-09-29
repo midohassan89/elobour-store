@@ -1,25 +1,22 @@
-import BrandCarousel from "@/components/brand/BrandCarousel";
-import CategoryGrid from "@/components/category/CategoryGrid";
-import HeroBanner from "@/components/home/HeroBanner";
+import BrandFilter from "@/components/brand/BrandFilter";
+import CategoryNav from "@/components/layout/CategoryNav";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import ProductGrid from "@/components/product/ProductGrid";
 import ProductGridSkeleton from "@/components/product/ProductGridSkeleton";
 import { Suspense } from "react";
 
-export default function Home() {
+export default function ShopPage() {
   return (
     <>
       <Header />
-      <main className="flex-1">
-        <div id="offers">
-          <HeroBanner />
-        </div>
-        <CategoryGrid />
-        <BrandCarousel />
-
+      <Suspense fallback={null}>
+        <CategoryNav />
+        <BrandFilter />
+      </Suspense>
+      <main className="flex-1 pt-6">
         <Suspense fallback={<ProductGridSkeleton />}>
-          <ProductGrid titleKey="featuredProducts" />
+          <ProductGrid />
         </Suspense>
       </main>
       <Footer />
