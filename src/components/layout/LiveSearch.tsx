@@ -109,16 +109,11 @@ export default function LiveSearch() {
       return;
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
-
-    if (!baseUrl) {
-      return;
-    }
-
     const controller = new AbortController();
 
-    fetch(`${baseUrl}/store/products?search=${encodeURIComponent(debouncedTerm)}`, {
+    fetch(`/api/products?search=${encodeURIComponent(debouncedTerm)}&limit=12`, {
       signal: controller.signal,
+      cache: "no-store",
     })
       .then(async (response) => {
         if (!response.ok) {

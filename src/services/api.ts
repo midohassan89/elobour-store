@@ -29,48 +29,6 @@ export type ProductsResponse = {
   meta: ProductsMeta;
 };
 
-function toProducts(data: unknown): Product[] | null {
-  if (!Array.isArray(data)) {
-    return null;
-  }
-
-  const products: Product[] = [];
-
-  for (const item of data) {
-    if (!item || typeof item !== "object") {
-      return null;
-    }
-
-    const record = item as Record<string, unknown>;
-    const price = toNumber(record.price);
-    const id = record.id;
-    const name = record.name;
-
-    if (
-      (typeof id !== "string" && typeof id !== "number") ||
-      typeof name !== "string" ||
-      price === null
-    ) {
-      return null;
-    }
-
-    const stock = toNumber(record.stock);
-
-    products.push({
-      id: String(id),
-      name,
-      nameEn: optionalLocalizedName(record.nameEn),
-      nameZh: optionalLocalizedName(record.nameZh),
-      price,
-      image: typeof record.image === "string" ? record.image : undefined,
-      stock: stock === null ? undefined : stock,
-      brand: toBrand(record.brand),
-    });
-  }
-
-  return products;
-}
-
 function toBrand(value: unknown): Brand | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -89,6 +47,48 @@ function toBrand(value: unknown): Brand | null {
     nameZh: optionalLocalizedName(record.nameZh),
     image: typeof record.image === "string" ? record.image : undefined,
   };
+}
+
+function toProducts(data: unknown): Product[] | null {
+  if (!Array.isArray(data)) {
+    return null;
+  }
+
+  const products: Product[] = [];
+
+  for (const item of data) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+
+    const record = item as Record<string, unknown>;
+    const price = toNumber(record.price);
+    const id = record.id;
+    const name = record.name;
+
+    if (
+      (typeof id !== "string" && typeof id !== "number") ||
+      typeof name !== "string" ||
+      price === null
+    ) {
+      continue;
+    }
+
+    const stock = toNumber(record.stock);
+
+    products.push({
+      id: String(id),
+      name,
+      nameEn: optionalLocalizedName(record.nameEn),
+      nameZh: optionalLocalizedName(record.nameZh),
+      price,
+      image: typeof record.image === "string" && record.image.trim() !== "" ? record.image : undefined,
+      stock: stock === null ? undefined : stock,
+      brand: toBrand(record.brand),
+    });
+  }
+
+  return products;
 }
 
 function toMeta(data: unknown, page: number): ProductsMeta | null {
@@ -123,12 +123,6 @@ export async function getProducts({
   search?: string;
   page?: number;
 } = {}): Promise<ProductsResponse> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
-
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_URL is not set");
-  }
-
   const params = new URLSearchParams({ page: String(page) });
 
   if (categoryId) {
@@ -143,9 +137,10 @@ export async function getProducts({
     params.set("search", search);
   }
 
-  const response = await fetch(`${baseUrl}/store/products?${params.toString()}`, {
+  // Use the storefront Prisma-backed route (shared ERP SQLite), not the ERP HTTP API.
+  const response = await fetch(`/api/products?${params.toString()}`, {
     cache: "no-store",
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(15000),
   });
 
   if (!response.ok) {
@@ -160,12 +155,5 @@ export async function getProducts({
     throw new Error("Products response did not match the expected shape");
   }
 
-  return {
-    products: [...products].sort((left, right) => {
-      const leftOut = (left.stock ?? 0) <= 0 ? 1 : 0;
-      const rightOut = (right.stock ?? 0) <= 0 ? 1 : 0;
-      return leftOut - rightOut;
-    }),
-    meta,
-  };
+  return { products, meta };
 }
