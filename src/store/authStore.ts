@@ -40,9 +40,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     const payload = (await response.json().catch(() => null)) as { user?: unknown; error?: unknown } | null;
 
     if (!response.ok || !isAuthUser(payload?.user)) {
-      const code = typeof payload?.error === "string" ? payload.error : "failed";
-      const message = typeof payload?.message === "string" ? payload.message.trim() : "";
-      throw new Error(message || code);
+      const data = payload ?? {};
+      const errorMessage =
+        typeof data.error === "string"
+          ? data.error
+          : (data.error as { message?: string } | undefined)?.message ||
+            (data as { message?: string }).message ||
+            "تعذر تسجيل الدخول";
+      throw new Error(errorMessage);
     }
 
     set({ user: payload.user, ready: true });
