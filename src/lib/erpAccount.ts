@@ -12,22 +12,3 @@ export async function currentCustomer(): Promise<StoreCustomer | null> {
 
   return findCustomerById(session.id);
 }
-
-export async function fetchCustomerApi(customerId: string, path: string, init?: RequestInit) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
-  const apiKey = process.env.STORE_API_KEY;
-
-  if (!baseUrl || !apiKey) {
-    return null;
-  }
-
-  return fetch(`${baseUrl}/customers/${encodeURIComponent(customerId)}${path}`, {
-    ...init,
-    cache: "no-store",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-    },
-  });
-}
