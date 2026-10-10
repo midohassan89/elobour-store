@@ -205,8 +205,8 @@ export default function LiveSearch() {
                 const imageUrl = product.image ? resolveProductImage(product.image) : "";
                 const isOutOfStock = product.stock !== undefined && product.stock <= 0;
                 const localizedName = getLocalizedName(product, language);
-                const hasSale = product.salePrice != null && product.salePrice > 0;
-                const activePrice = hasSale ? product.salePrice : product.price;
+                const salePrice = product.salePrice;
+                const hasSale = salePrice != null && salePrice > 0;
 
                 return (
                   <li
@@ -229,7 +229,7 @@ export default function LiveSearch() {
                       {hasSale ? (
                         <p className="flex flex-wrap items-baseline gap-2">
                           <span className="text-sm font-extrabold text-primary">
-                            {product.salePrice} {t("currency")}
+                            {salePrice} {t("currency")}
                           </span>
                           <span className="text-xs text-gray-500 line-through">
                             {product.price} {t("currency")}
@@ -250,7 +250,7 @@ export default function LiveSearch() {
                           name: product.name,
                           nameEn: product.nameEn,
                           nameZh: product.nameZh,
-                          price: activePrice,
+                          price: hasSale ? salePrice : product.price,
                         })
                       }
                       className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-gray-400"
