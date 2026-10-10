@@ -1,0 +1,15 @@
+import ProfileAccount from "@/components/account/ProfileAccount";
+import Footer from "@/components/layout/Footer";
+import Header from "@/components/layout/Header";
+
+export default function ProfilePage() {
+  return (
+    <>
+      <Header />
+      <main className="flex-1 bg-stone-50">
+        <ProfileAccount />
+      </main>
+      <Footer />
+    </>
+  );
+}
