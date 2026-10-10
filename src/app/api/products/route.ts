@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
       nameEn: product.nameEn,
       nameZh: product.nameZh,
       price: product.price,
+      salePrice:
+        product.salePrice != null && product.salePrice > 0 ? product.salePrice : null,
       // Null / empty imageUrl is allowed — ProductCard shows a placeholder.
       image: product.imageUrl || null,
       categoryId: product.categoryId,

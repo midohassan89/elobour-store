@@ -12,6 +12,7 @@ export interface Product {
   nameEn?: string;
   nameZh?: string;
   price: number;
+  salePrice?: number | null;
   image?: string;
   stock?: number;
   brand?: Brand | null;

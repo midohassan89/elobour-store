@@ -75,6 +75,7 @@ function toProducts(data: unknown): Product[] | null {
     }
 
     const stock = toNumber(record.stock);
+    const salePrice = toNumber(record.salePrice);
 
     products.push({
       id: String(id),
@@ -82,6 +83,7 @@ function toProducts(data: unknown): Product[] | null {
       nameEn: optionalLocalizedName(record.nameEn),
       nameZh: optionalLocalizedName(record.nameZh),
       price,
+      salePrice: salePrice != null && salePrice > 0 ? salePrice : null,
       image: typeof record.image === "string" && record.image.trim() !== "" ? record.image : undefined,
       stock: stock === null ? undefined : stock,
       brand: toBrand(record.brand),

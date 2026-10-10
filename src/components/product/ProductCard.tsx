@@ -18,6 +18,7 @@ type ProductCardProps = {
     nameZh?: string;
   } | null;
   price: number;
+  salePrice?: number | null;
   image?: string;
   stock?: number;
 };
@@ -29,6 +30,7 @@ export default function ProductCard({
   nameZh,
   brand,
   price,
+  salePrice,
   image,
   stock,
 }: ProductCardProps) {
@@ -37,6 +39,8 @@ export default function ProductCard({
   const brandName = brand ? getLocalizedName(brand, language) : "";
   const addItem = useCartStore((state) => state.addItem);
   const isOutOfStock = stock !== undefined && stock <= 0;
+  const hasSale = salePrice != null && salePrice > 0;
+  const activePrice = hasSale ? salePrice : price;
   let cleanPath = image || "";
 
   if (cleanPath.startsWith("public/")) {
@@ -88,16 +92,27 @@ export default function ProductCard({
         {localizedName}
       </h3>
       {brandName ? <p className="mt-1 text-xs font-medium text-stone-400">{brandName}</p> : null}
-      <p className="mt-2 text-base font-extrabold text-primary">
-        {price} {t("currency")}
-      </p>
+      {hasSale ? (
+        <p className="mt-2 flex flex-wrap items-baseline gap-2">
+          <span className="text-base font-extrabold text-primary">
+            {salePrice} {t("currency")}
+          </span>
+          <span className="text-sm text-gray-500 line-through">
+            {price} {t("currency")}
+          </span>
+        </p>
+      ) : (
+        <p className="mt-2 text-base font-extrabold text-primary">
+          {price} {t("currency")}
+        </p>
+      )}
       <p className="mt-2 inline-flex w-fit rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">
-        {t("earnPoints", { count: pointsForAmount(price) })}
+        {t("earnPoints", { count: pointsForAmount(activePrice) })}
       </p>
       <button
         type="button"
         disabled={isOutOfStock}
-        onClick={() => addItem({ id, name, nameEn, nameZh, price })}
+        onClick={() => addItem({ id, name, nameEn, nameZh, price: activePrice })}
         className={`mt-auto w-full rounded-full px-3 py-2.5 text-sm font-bold text-white ${
           isOutOfStock
             ? "cursor-not-allowed bg-gray-400"

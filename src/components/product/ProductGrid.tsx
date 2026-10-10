@@ -130,6 +130,7 @@ export default function ProductGrid({ titleKey = "products" }: ProductGridProps)
               nameZh={product.nameZh}
               brand={product.brand}
               price={product.price}
+              salePrice={product.salePrice}
               image={product.image}
               stock={product.stock}
             />

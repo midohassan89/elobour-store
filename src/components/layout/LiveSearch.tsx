@@ -69,6 +69,8 @@ function toSearchResults(data: unknown): Product[] {
     }
 
     const stock = typeof record.stock === "number" ? record.stock : Number(record.stock);
+    const saleRaw = typeof record.salePrice === "number" ? record.salePrice : Number(record.salePrice);
+    const salePrice = Number.isFinite(saleRaw) && saleRaw > 0 ? saleRaw : null;
 
     return [
       {
@@ -77,6 +79,7 @@ function toSearchResults(data: unknown): Product[] {
         nameEn: optionalLocalizedName(record.nameEn),
         nameZh: optionalLocalizedName(record.nameZh),
         price,
+        salePrice,
         image: typeof record.image === "string" ? record.image : undefined,
         stock: Number.isFinite(stock) ? stock : undefined,
       },
@@ -202,6 +205,8 @@ export default function LiveSearch() {
                 const imageUrl = product.image ? resolveProductImage(product.image) : "";
                 const isOutOfStock = product.stock !== undefined && product.stock <= 0;
                 const localizedName = getLocalizedName(product, language);
+                const hasSale = product.salePrice != null && product.salePrice > 0;
+                const activePrice = hasSale ? product.salePrice : product.price;
 
                 return (
                   <li
@@ -221,9 +226,20 @@ export default function LiveSearch() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-stone-900">{localizedName}</p>
-                      <p className="text-sm font-extrabold text-primary">
-                        {product.price} {t("currency")}
-                      </p>
+                      {hasSale ? (
+                        <p className="flex flex-wrap items-baseline gap-2">
+                          <span className="text-sm font-extrabold text-primary">
+                            {product.salePrice} {t("currency")}
+                          </span>
+                          <span className="text-xs text-gray-500 line-through">
+                            {product.price} {t("currency")}
+                          </span>
+                        </p>
+                      ) : (
+                        <p className="text-sm font-extrabold text-primary">
+                          {product.price} {t("currency")}
+                        </p>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -234,7 +250,7 @@ export default function LiveSearch() {
                           name: product.name,
                           nameEn: product.nameEn,
                           nameZh: product.nameZh,
-                          price: product.price,
+                          price: activePrice,
                         })
                       }
                       className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-gray-400"
