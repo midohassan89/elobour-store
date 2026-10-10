@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { useCartStore } from "@/store/cartStore";
 import { getLocalizedName } from "@/utils/localizedName";
-import { pointsForAmount } from "@/utils/points";
+import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 
 type CartDrawerProps = {
   open: boolean;
@@ -16,10 +16,16 @@ type CartDrawerProps = {
 
 export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { t, language } = useI18n();
+  const { earnRatio, ready } = useLoyaltySettings();
   const items = useCartStore((state) => state.items);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
   const totalPrice = useCartStore((state) => state.totalPrice);
+  const earnedPoints = Math.floor(totalPrice * earnRatio);
+
+  useEffect(() => {
+    console.log("Current Ratio in UI:", earnRatio);
+  }, [earnRatio]);
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -148,9 +154,9 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
         </div>
 
         <div className="border-t border-stone-200 px-5 py-4">
-          {items.length > 0 ? (
+          {ready && items.length > 0 ? (
             <p className="mb-3 rounded-2xl bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">
-              {t("earnOnOrder", { count: pointsForAmount(totalPrice) })}
+              {t("earnOnOrder", { count: earnedPoints })}
             </p>
           ) : null}
           <div className="mb-4 flex items-center justify-between text-base font-extrabold">

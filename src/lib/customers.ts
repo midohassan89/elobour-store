@@ -1,5 +1,4 @@
-import { DatabaseSync } from "node:sqlite";
-import path from "path";
+import { prisma } from "@/lib/prisma";
 
 export type StoreCustomer = {
   id: string;
@@ -7,39 +6,18 @@ export type StoreCustomer = {
   pointsBalance: number;
 };
 
-let database: DatabaseSync | null = null;
-
-function databasePath() {
-  const url = process.env.DATABASE_URL;
-
-  if (!url?.startsWith("file:")) {
-    throw new Error("DATABASE_URL is not set");
-  }
-
-  let filePath = url.slice("file:".length);
-
-  if (filePath.startsWith("//")) {
-    filePath = filePath.slice(2);
-  }
-
-  if (process.platform === "win32" && filePath.startsWith("/")) {
-    filePath = filePath.slice(1);
-  }
-
-  return path.resolve(filePath);
-}
-
-function getDatabase() {
-  if (!database) {
-    database = new DatabaseSync(databasePath());
-    database.exec("PRAGMA busy_timeout = 5000");
-  }
-
-  return database;
-}
+const customerSelect = {
+  id: true,
+  phone: true,
+  pointsBalance: true,
+} as const;
 
 export function normalizePhone(input: string) {
-  let digits = input.trim().replace(/[^\d+]/g, "");
+  const western = input
+    .trim()
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
+  let digits = western.replace(/[^\d+]/g, "");
 
   if (digits.startsWith("+")) {
     digits = digits.slice(1);
@@ -60,54 +38,34 @@ export function normalizePhone(input: string) {
   return digits;
 }
 
-function toCustomer(row: Record<string, unknown> | undefined): StoreCustomer | null {
-  if (!row || typeof row.id !== "string" || typeof row.phone !== "string") {
-    return null;
-  }
-
-  const pointsBalance = Number(row.pointsBalance);
-
-  return {
-    id: row.id,
-    phone: row.phone,
-    pointsBalance: Number.isFinite(pointsBalance) ? pointsBalance : 0,
-  };
+export async function findCustomerByPhone(phone: string) {
+  return prisma.customer.findUnique({
+    where: { phone },
+    select: customerSelect,
+  });
 }
 
-export function findCustomerByPhone(phone: string) {
-  const row = getDatabase()
-    .prepare("SELECT id, phone, pointsBalance FROM Customer WHERE phone = ?")
-    .get(phone) as Record<string, unknown> | undefined;
-
-  return toCustomer(row);
+export async function findCustomerById(id: string) {
+  return prisma.customer.findUnique({
+    where: { id },
+    select: customerSelect,
+  });
 }
 
-export function findCustomerById(id: string) {
-  const row = getDatabase()
-    .prepare("SELECT id, phone, pointsBalance FROM Customer WHERE id = ?")
-    .get(id) as Record<string, unknown> | undefined;
-
-  return toCustomer(row);
-}
-
-export function findOrCreateCustomer(phone: string) {
-  const existing = findCustomerByPhone(phone);
+export async function findOrCreateCustomer(phone: string): Promise<StoreCustomer> {
+  const existing = await findCustomerByPhone(phone);
 
   if (existing) {
     return existing;
   }
 
-  const now = Date.now();
-  const id = crypto.randomUUID();
-
   try {
-    getDatabase()
-      .prepare(
-        "INSERT INTO Customer (id, phone, name, password, pointsBalance, createdAt, updatedAt) VALUES (?, ?, NULL, NULL, 0, ?, ?)",
-      )
-      .run(id, phone, now, now);
+    return await prisma.customer.create({
+      data: { phone, pointsBalance: 0 },
+      select: customerSelect,
+    });
   } catch (error) {
-    const created = findCustomerByPhone(phone);
+    const created = await findCustomerByPhone(phone);
 
     if (created) {
       return created;
@@ -115,6 +73,4 @@ export function findOrCreateCustomer(phone: string) {
 
     throw error;
   }
-
-  return { id, phone, pointsBalance: 0 };
 }

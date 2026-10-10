@@ -63,8 +63,14 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
       setPhone("");
       onClose();
     } catch (caught) {
-      const code = caught instanceof Error ? caught.message : "failed";
-      setError(code === "invalid_phone" ? t("loginInvalidPhone") : t("loginFailed"));
+      const message = caught instanceof Error ? caught.message : "failed";
+      if (message === "invalid_phone") {
+        setError(t("loginInvalidPhone"));
+      } else if (message === "failed" || message === "") {
+        setError(t("loginFailed"));
+      } else {
+        setError(message);
+      }
     } finally {
       setPending(false);
     }

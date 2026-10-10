@@ -487,6 +487,14 @@ model Category {
   updatedAt   DateTime  @updatedAt
 }
 
+/// Key/value settings shared with the ERP (loyalty ratios, etc.).
+model StoreSetting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
 model Customer {
   id            String   @id @default(uuid())
   /** Primary login identifier. */

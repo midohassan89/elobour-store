@@ -3,9 +3,10 @@
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { useCartStore } from "@/store/cartStore";
 import { getLocalizedName } from "@/utils/localizedName";
-import { pointsForAmount } from "@/utils/points";
+import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import { ShoppingBag } from "lucide-react";
 import Image from "next/image";
+import { useEffect } from "react";
 
 type ProductCardProps = {
   id: string;
@@ -35,12 +36,19 @@ export default function ProductCard({
   stock,
 }: ProductCardProps) {
   const { t, language } = useI18n();
+  const { earnRatio, ready } = useLoyaltySettings();
   const localizedName = getLocalizedName({ name, nameEn, nameZh }, language);
   const brandName = brand ? getLocalizedName(brand, language) : "";
   const addItem = useCartStore((state) => state.addItem);
   const isOutOfStock = stock !== undefined && stock <= 0;
   const hasSale = salePrice != null && salePrice > 0;
   const activePrice = hasSale ? salePrice : price;
+  const earnedPoints = Math.floor(activePrice * earnRatio);
+
+  useEffect(() => {
+    console.log("Current Ratio in UI:", earnRatio);
+  }, [earnRatio]);
+
   let cleanPath = image || "";
 
   if (cleanPath.startsWith("public/")) {
@@ -106,9 +114,11 @@ export default function ProductCard({
           {price} {t("currency")}
         </p>
       )}
-      <p className="mt-2 inline-flex w-fit rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">
-        {t("earnPoints", { count: pointsForAmount(activePrice) })}
-      </p>
+      {ready ? (
+        <p className="mt-2 inline-flex w-fit rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">
+          {t("earnPoints", { count: earnedPoints })}
+        </p>
+      ) : null}
       <button
         type="button"
         disabled={isOutOfStock}

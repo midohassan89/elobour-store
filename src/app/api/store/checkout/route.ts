@@ -1,6 +1,7 @@
 import { findCustomerById } from "@/lib/customers";
 import { prisma } from "@/lib/prisma";
 import { readSessionToken, sessionCookieName } from "@/lib/session";
+import { getLoyaltySettings } from "@/lib/loyalty";
 import { discountForPoints, pointsForAmount, SHIPPING_FEES } from "@/utils/points";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
 
     const cookieStore = await cookies();
     const session = readSessionToken(cookieStore.get(sessionCookieName())?.value);
-    const customer = session ? findCustomerById(session.id) : null;
+    const customer = session ? await findCustomerById(session.id) : null;
     const customerId = customer?.id?.trim() || "";
     const isGuest = !customerId || !phone;
 
@@ -73,9 +74,12 @@ export async function POST(request: Request) {
     }
 
     const subtotal = normalizedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const loyalty = await getLoyaltySettings();
     const pointsRedeemed = isGuest ? 0 : wholePoints(Number(body.pointsRedeemed ?? 0));
-    const discount = isGuest ? 0 : discountForPoints(pointsRedeemed);
-    const pointsEarned = isGuest ? 0 : wholePoints(pointsForAmount(subtotal - discount));
+    const discount = isGuest ? 0 : discountForPoints(pointsRedeemed, loyalty.redeemValue);
+    const pointsEarned = isGuest
+      ? 0
+      : wholePoints(pointsForAmount(subtotal - discount, loyalty.earnRatio));
     const shippingAllowed = SHIPPING_FEES.some((fee) => fee === shippingFee);
 
     if (

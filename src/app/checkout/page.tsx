@@ -4,6 +4,7 @@ import { useI18n } from "@/components/i18n/LanguageProvider";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import type { TranslationKey } from "@/locales/types";
+import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
 import { getLocalizedName } from "@/utils/localizedName";
@@ -11,7 +12,6 @@ import {
   discountForPoints,
   formatPointsAmount,
   maxRedeemablePoints,
-  pointsForAmount,
 } from "@/utils/points";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -32,6 +32,7 @@ export default function CheckoutPage() {
   const items = useCartStore((state) => state.items);
   const totalPrice = useCartStore((state) => state.totalPrice);
   const clearCart = useCartStore((state) => state.clearCart);
+  const { earnRatio, redeemValue, ready } = useLoyaltySettings();
   const user = useAuthStore((state) => state.user);
   const authReady = useAuthStore((state) => state.ready);
   const hydrate = useAuthStore((state) => state.hydrate);
@@ -45,13 +46,19 @@ export default function CheckoutPage() {
   );
   const [detailedAddress, setDetailedAddress] = useState("");
   const shippingFee = selectedArea.fee;
-  const maxRedeemable = user ? maxRedeemablePoints(user.pointsBalance, totalPrice) : 0;
+  const maxRedeemable = user
+    ? maxRedeemablePoints(user.pointsBalance, totalPrice, redeemValue)
+    : 0;
   const requestedPoints = redeemEnabled ? Math.floor(Number(pointsInput) || 0) : 0;
   const pointsRedeemed = Math.min(Math.max(0, requestedPoints), maxRedeemable);
-  const pointsDiscount = discountForPoints(pointsRedeemed);
+  const pointsDiscount = discountForPoints(pointsRedeemed, redeemValue);
   const merchandiseDue = Math.max(0, totalPrice - pointsDiscount);
   const finalTotal = merchandiseDue + shippingFee;
-  const earnedPoints = pointsForAmount(merchandiseDue);
+  const earnedPoints = Math.floor(merchandiseDue * earnRatio);
+
+  useEffect(() => {
+    console.log("Current Ratio in UI:", earnRatio);
+  }, [earnRatio]);
 
   useEffect(() => {
     if (!authReady) {
@@ -239,7 +246,7 @@ export default function CheckoutPage() {
                     <p className="text-sm font-semibold leading-7 text-amber-900">
                       {t("pointsWorth", {
                         points: user.pointsBalance,
-                        amount: formatPointsAmount(discountForPoints(user.pointsBalance)),
+                        amount: formatPointsAmount(discountForPoints(user.pointsBalance, redeemValue)),
                       })}
                     </p>
                     <label className="mt-3 flex items-center gap-2 text-sm font-bold text-stone-800">
@@ -340,7 +347,7 @@ export default function CheckoutPage() {
                     </dd>
                   </div>
                 </dl>
-                {items.length > 0 ? (
+                {ready && items.length > 0 ? (
                   <p className="mt-4 rounded-2xl bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">
                     {t("earnOnOrder", { count: earnedPoints })}
                   </p>

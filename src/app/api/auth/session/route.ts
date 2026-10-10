@@ -19,7 +19,7 @@ export async function GET() {
   }
 
   try {
-    const customer = findCustomerById(session.id);
+    const customer = await findCustomerById(session.id);
 
     if (!customer) {
       const response = NextResponse.json({ user: null });

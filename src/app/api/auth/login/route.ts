@@ -24,13 +24,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const customer = findOrCreateCustomer(phone);
+    const customer = await findOrCreateCustomer(phone);
     const response = NextResponse.json({ user: customer });
 
     response.cookies.set(sessionCookieName(), createSessionToken(customer), sessionCookieOptions());
 
     return response;
-  } catch {
-    return NextResponse.json({ error: "failed" }, { status: 500 });
+  } catch (error) {
+    console.error("[api/auth/login]", error);
+    const message = error instanceof Error ? error.message : "Could not sign in";
+    return NextResponse.json({ error: "failed", message }, { status: 500 });
   }
 }

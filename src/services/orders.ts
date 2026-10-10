@@ -2,6 +2,7 @@
 
 import { findCustomerById } from "@/lib/customers";
 import { readSessionToken, sessionCookieName } from "@/lib/session";
+import { getLoyaltySettings } from "@/lib/loyalty";
 import { discountForPoints, pointsForAmount, SHIPPING_FEES } from "@/utils/points";
 import { cookies } from "next/headers";
 
@@ -61,11 +62,12 @@ export async function placeStoreOrder(input: StoreOrderInput): Promise<PlaceOrde
 
   const cookieStore = await cookies();
   const session = readSessionToken(cookieStore.get(sessionCookieName())?.value);
-  const customer = session ? findCustomerById(session.id) : null;
+  const customer = session ? await findCustomerById(session.id) : null;
+  const loyalty = await getLoyaltySettings();
   const pointsRedeemed = Math.floor(Number(input.pointsRedeemed ?? 0));
   const shippingFee = Number(input.shippingFee ?? 0);
   const subtotal = input.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = discountForPoints(pointsRedeemed);
+  const discount = discountForPoints(pointsRedeemed, loyalty.redeemValue);
   const shippingAllowed = SHIPPING_FEES.some((fee) => fee === shippingFee);
 
   if (
@@ -98,7 +100,7 @@ export async function placeStoreOrder(input: StoreOrderInput): Promise<PlaceOrde
         shippingFee,
         customerId: customer.id,
         pointsRedeemed,
-        pointsEarned: pointsForAmount(subtotal - discount),
+        pointsEarned: pointsForAmount(subtotal - discount, loyalty.earnRatio),
         items,
       }
     : {
