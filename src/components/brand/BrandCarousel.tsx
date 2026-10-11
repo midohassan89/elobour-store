@@ -95,7 +95,7 @@ export default function BrandCarousel() {
         {t("shopByBrand")}
         <span
           aria-hidden="true"
-          className="absolute -bottom-2 start-0 h-1 w-10 rounded-full bg-orange-500"
+          className="absolute -bottom-2 start-0 h-1 w-10 rounded-full bg-green-600"
         />
       </h2>
       <div className="flex gap-6 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -109,7 +109,7 @@ export default function BrandCarousel() {
               href={`/shop?brandId=${encodeURIComponent(brand.id)}`}
               className="flex shrink-0 cursor-pointer flex-col items-center"
             >
-              <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 shadow-sm transition-colors hover:border-orange-400 hover:bg-orange-50">
+              <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 shadow-sm transition-colors hover:border-green-400 hover:bg-green-50">
                 <BrandLogo imageUrl={imageUrl} label={label} />
               </span>
               <span className="mt-2 w-20 truncate text-center text-xs font-medium text-gray-600">

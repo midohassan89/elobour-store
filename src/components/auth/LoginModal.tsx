@@ -15,6 +15,8 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
   const { t } = useI18n();
   const login = useAuthStore((state) => state.login);
   const [phone, setPhone] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [needsName, setNeedsName] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const mounted = useSyncExternalStore(
@@ -44,6 +46,18 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
     };
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (open) {
+      return;
+    }
+
+    setPhone("");
+    setFullName("");
+    setNeedsName(false);
+    setError(null);
+    setPending(false);
+  }, [open]);
+
   if (!open || !mounted) {
     return null;
   }
@@ -58,9 +72,20 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
     setPending(true);
     setError(null);
 
+    if (needsName && !fullName.trim()) {
+      setError(t("loginNameRequired"));
+      setPending(false);
+      return;
+    }
+
     try {
-      await login(phone);
-      setPhone("");
+      const result = await login(phone, needsName ? fullName.trim() : undefined);
+
+      if (result === "needs_name") {
+        setNeedsName(true);
+        return;
+      }
+
       onClose();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "failed";
@@ -115,10 +140,32 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
             autoComplete="tel"
             required
             value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            onChange={(event) => {
+              setPhone(event.target.value);
+              setNeedsName(false);
+              setFullName("");
+            }}
             placeholder={t("phonePlaceholder")}
             className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-lg text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20"
           />
+          {needsName ? (
+            <div>
+              <label htmlFor="login-name" className="mb-2 block text-sm font-bold text-stone-800">
+                {t("fullName")}
+                <span className="text-primary"> *</span>
+              </label>
+              <input
+                id="login-name"
+                name="fullName"
+                type="text"
+                autoComplete="name"
+                required
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-lg text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20"
+              />
+            </div>
+          ) : null}
           {error ? (
             <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
               {error}
@@ -127,7 +174,7 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-full bg-primary py-3.5 text-base font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary-700 hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none"
+            className="w-full rounded-full bg-primary py-3.5 text-base font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary-500 hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none"
           >
             {pending ? t("loginPending") : t("loginSubmit")}
           </button>

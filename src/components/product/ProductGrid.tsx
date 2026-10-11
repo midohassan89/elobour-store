@@ -114,7 +114,7 @@ export default function ProductGrid({ titleKey = "products" }: ProductGridProps)
           <button
             type="button"
             onClick={() => router.push("/")}
-            className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary-700 hover:shadow-lg"
+            className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary-500 hover:shadow-lg"
           >
             {t("browseAll")}
           </button>
@@ -144,7 +144,7 @@ export default function ProductGrid({ titleKey = "products" }: ProductGridProps)
             type="button"
             disabled={loading}
             onClick={() => setPage((current) => current + 1)}
-            className="rounded-full bg-primary px-8 py-3 text-base font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary-700 hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-primary-300 disabled:shadow-none"
+            className="rounded-full bg-primary px-8 py-3 text-base font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary-500 hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-primary-300 disabled:shadow-none"
           >
             {loading ? t("loading") : t("loadMore")}
           </button>

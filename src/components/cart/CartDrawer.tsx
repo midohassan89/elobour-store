@@ -155,7 +155,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
         <div className="border-t border-stone-200 px-5 py-4">
           {ready && items.length > 0 ? (
-            <p className="mb-3 rounded-2xl bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">
+            <p className="mb-3 rounded-2xl bg-primary-50 px-3 py-2 text-sm font-bold text-primary-800">
               {t("earnOnOrder", { count: earnedPoints })}
             </p>
           ) : null}
@@ -172,7 +172,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             className={`flex w-full items-center justify-center rounded-full py-3 text-sm font-bold text-white transition ${
               items.length === 0
                 ? "pointer-events-none bg-stone-300"
-                : "bg-primary hover:bg-primary-700"
+                : "bg-primary hover:bg-primary-500"
             }`}
           >
             {t("checkout")}

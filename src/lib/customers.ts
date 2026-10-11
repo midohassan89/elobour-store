@@ -3,12 +3,14 @@ import { prisma } from "@/lib/prisma";
 export type StoreCustomer = {
   id: string;
   phone: string;
+  name: string | null;
   pointsBalance: number;
 };
 
 const customerSelect = {
   id: true,
   phone: true,
+  name: true,
   pointsBalance: true,
 } as const;
 
@@ -48,6 +50,14 @@ export async function findCustomerByPhone(phone: string) {
 export async function findCustomerById(id: string) {
   return prisma.customer.findUnique({
     where: { id },
+    select: customerSelect,
+  });
+}
+
+export async function saveCustomerName(id: string, name: string): Promise<StoreCustomer> {
+  return prisma.customer.update({
+    where: { id },
+    data: { name: name.trim().slice(0, 80) },
     select: customerSelect,
   });
 }

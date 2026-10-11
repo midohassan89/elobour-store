@@ -24,7 +24,17 @@ export type AccountAddress = {
   title: string;
   street: string;
   city: string;
+  recipientName: string | null;
+  phoneNumber: string | null;
+  zoneId: string | null;
   isDefault: boolean;
+  zone: {
+    id: string;
+    nameAr: string;
+    nameEn: string;
+    nameZh: string;
+    deliveryFee: number;
+  } | null;
 };
 
 type AddressRow = {
@@ -32,7 +42,14 @@ type AddressRow = {
   title: string;
   street: string;
   city: string;
+  recipientName: string | null;
+  phoneNumber: string | null;
+  zoneId: string | null;
   isDefault: number | boolean | bigint;
+  zoneNameAr: string | null;
+  zoneNameEn: string | null;
+  zoneNameZh: string | null;
+  zoneFee: number | null;
 };
 
 function isDefaultAddress(value: AddressRow["isDefault"]) {
@@ -71,10 +88,23 @@ export async function listCustomerOrders(customerId: string): Promise<AccountOrd
 
 export async function listCustomerAddresses(customerId: string): Promise<AccountAddress[]> {
   const rows = await prisma.$queryRaw<AddressRow[]>`
-    SELECT id, title, street, city, isDefault
+    SELECT
+      Address.id,
+      Address.title,
+      Address.street,
+      Address.city,
+      Address.recipientName,
+      Address.phoneNumber,
+      Address.zoneId,
+      Address.isDefault,
+      DeliveryZone.nameAr AS zoneNameAr,
+      DeliveryZone.nameEn AS zoneNameEn,
+      DeliveryZone.nameZh AS zoneNameZh,
+      DeliveryZone.deliveryFee AS zoneFee
     FROM Address
-    WHERE customerId = ${customerId}
-    ORDER BY isDefault DESC, createdAt DESC
+    LEFT JOIN DeliveryZone ON DeliveryZone.id = Address.zoneId
+    WHERE Address.customerId = ${customerId}
+    ORDER BY Address.isDefault DESC, Address.createdAt DESC
   `;
 
   return rows.map((row) => ({
@@ -82,17 +112,40 @@ export async function listCustomerAddresses(customerId: string): Promise<Account
     title: row.title,
     street: row.street,
     city: row.city,
+    recipientName: row.recipientName,
+    phoneNumber: row.phoneNumber,
+    zoneId: row.zoneId,
     isDefault: isDefaultAddress(row.isDefault),
+    zone:
+      row.zoneId && row.zoneNameAr
+        ? {
+            id: row.zoneId,
+            nameAr: row.zoneNameAr,
+            nameEn: row.zoneNameEn ?? "",
+            nameZh: row.zoneNameZh ?? "",
+            deliveryFee: Number(row.zoneFee) || 0,
+          }
+        : null,
   }));
 }
 
 export async function createCustomerAddress(
   customerId: string,
-  input: { title: string; street: string; city: string },
+  input: {
+    title: string;
+    street: string;
+    city: string;
+    recipientName?: string | null;
+    phoneNumber?: string | null;
+    zoneId?: string | null;
+  },
 ): Promise<AccountAddress> {
   const title = input.title.trim().slice(0, 80);
   const street = input.street.trim().slice(0, 300);
-  const city = input.city.trim().slice(0, 120);
+  const city = input.city.trim().slice(0, 120) || "العين السخنة";
+  const recipientName = input.recipientName?.trim().slice(0, 80) || null;
+  const phoneNumber = input.phoneNumber?.trim().slice(0, 30) || null;
+  const zoneId = input.zoneId?.trim() || null;
   const id = randomUUID();
   const now = new Date().toISOString();
 
@@ -113,8 +166,13 @@ export async function createCustomerAddress(
     }
 
     await tx.$executeRaw`
-      INSERT INTO Address (id, customerId, title, street, city, isDefault, createdAt, updatedAt)
-      VALUES (${id}, ${customerId}, ${title}, ${street}, ${city}, ${makeDefault ? 1 : 0}, ${now}, ${now})
+      INSERT INTO Address (
+        id, customerId, title, street, city, recipientName, phoneNumber, zoneId, isDefault, createdAt, updatedAt
+      )
+      VALUES (
+        ${id}, ${customerId}, ${title}, ${street}, ${city}, ${recipientName}, ${phoneNumber}, ${zoneId},
+        ${makeDefault ? 1 : 0}, ${now}, ${now}
+      )
     `;
 
     return {
@@ -122,7 +180,60 @@ export async function createCustomerAddress(
       title,
       street,
       city,
+      recipientName,
+      phoneNumber,
+      zoneId,
       isDefault: makeDefault,
+      zone: null,
     };
+  });
+}
+
+export async function deleteCustomerAddress(customerId: string, addressId: string) {
+  const now = new Date().toISOString();
+
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM Address
+      WHERE id = ${addressId} AND customerId = ${customerId}
+      LIMIT 1
+    `;
+
+    if (!existing[0]) {
+      return false;
+    }
+
+    await tx.$executeRaw`
+      DELETE FROM Address
+      WHERE id = ${addressId} AND customerId = ${customerId}
+    `;
+
+    const defaults = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM Address
+      WHERE customerId = ${customerId} AND isDefault = 1
+      LIMIT 1
+    `;
+
+    if (!defaults[0]) {
+      const next = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM Address
+        WHERE customerId = ${customerId}
+        ORDER BY createdAt DESC
+        LIMIT 1
+      `;
+
+      if (next[0]) {
+        await tx.$executeRaw`
+          UPDATE Address
+          SET isDefault = 1, updatedAt = ${now}
+          WHERE id = ${next[0].id}
+        `;
+      }
+    }
+
+    return true;
   });
 }

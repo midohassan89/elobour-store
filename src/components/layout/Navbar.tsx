@@ -2,7 +2,7 @@
 
 import { Menu, ShoppingCart, User, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import LoginModal from "@/components/auth/LoginModal";
 import LoyaltyCardModal from "@/components/loyalty/LoyaltyCardModal";
 import { useI18n } from "@/components/i18n/LanguageProvider";
@@ -14,7 +14,6 @@ import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
 import { getLocalizedName, optionalLocalizedName } from "@/utils/localizedName";
 import { uniqueByArabicName } from "@/utils/uniqueByName";
-import { maskPhone } from "@/utils/maskPhone";
 
 export default function Navbar() {
   const { t, language } = useI18n();
@@ -34,6 +33,16 @@ export default function Navbar() {
   const closeLogin = useCallback(() => setLoginOpen(false), []);
   const closeCard = useCallback(() => setCardOpen(false), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const clockReady = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  const hour = clockReady ? new Date().getHours() : 12;
+  const isMorning = hour >= 5 && hour < 12;
+  const greeting = user?.name
+    ? t(isMorning ? "greetingMorning" : "greetingEvening", { name: user.name })
+    : t(isMorning ? "greetingMorningPlain" : "greetingEveningPlain");
 
   useEffect(() => {
     if (!authReady) {
@@ -147,8 +156,8 @@ export default function Navbar() {
               >
                 {t("loyaltyCard")}
               </button>
-              <span className="text-xs font-bold tracking-wide text-stone-700 sm:text-sm">
-                {maskPhone(user.phone)}
+              <span className="max-w-40 truncate text-xs font-extrabold text-stone-800 sm:max-w-none sm:text-sm">
+                {clockReady ? greeting : t("greetingEveningPlain")}
               </span>
               <span className="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-extrabold text-primary-800">
                 {t("pointsBadge", { count: user.pointsBalance })}
@@ -165,7 +174,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => setLoginOpen(true)}
-              className="rounded-full bg-primary px-3 py-2 text-xs font-extrabold text-white transition hover:bg-primary-700 sm:px-4 sm:text-sm"
+              className="rounded-full bg-primary px-3 py-2 text-xs font-extrabold text-white transition hover:bg-primary-500 sm:px-4 sm:text-sm"
             >
               {t("login")}
             </button>

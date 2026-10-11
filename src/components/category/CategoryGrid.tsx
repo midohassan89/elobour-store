@@ -78,7 +78,7 @@ export default function CategoryGrid() {
         {t("shopByCategory")}
         <span
           aria-hidden="true"
-          className="absolute -bottom-2 start-0 h-1 w-10 rounded-full bg-orange-500"
+          className="absolute -bottom-2 start-0 h-1 w-10 rounded-full bg-green-600"
         />
       </h2>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
@@ -90,9 +90,9 @@ export default function CategoryGrid() {
             <Link
               key={category.id}
               href={`/shop?categoryId=${encodeURIComponent(category.id)}`}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-500 hover:shadow-md"
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-green-600 hover:shadow-md"
             >
-              <Icon className="h-8 w-8 text-orange-500" strokeWidth={1.75} aria-hidden="true" />
+              <Icon className="h-8 w-8 text-green-600" strokeWidth={1.75} aria-hidden="true" />
               <span className="text-center text-sm font-semibold text-gray-700">{label}</span>
             </Link>
           );

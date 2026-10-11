@@ -2,7 +2,9 @@ import { findCustomerById } from "@/lib/customers";
 import { prisma } from "@/lib/prisma";
 import { readSessionToken, sessionCookieName } from "@/lib/session";
 import { getLoyaltySettings } from "@/lib/loyalty";
-import { discountForPoints, pointsForAmount, SHIPPING_FEES } from "@/utils/points";
+import { findActiveDeliveryZone } from "@/lib/deliveryZones";
+import { createCustomerAddress } from "@/lib/accountData";
+import { discountForPoints, pointsForAmount } from "@/utils/points";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -16,11 +18,20 @@ type CheckoutItem = {
 
 type CheckoutBody = {
   customerName?: unknown;
+  recipientName?: unknown;
   phone?: unknown;
+  phoneNumber?: unknown;
   address?: unknown;
   notes?: unknown;
+  deliveryTime?: unknown;
   totalAmount?: unknown;
   shippingFee?: unknown;
+  deliveryFee?: unknown;
+  zoneId?: unknown;
+  saveAddress?: unknown;
+  addressTitle?: unknown;
+  street?: unknown;
+  city?: unknown;
   pointsRedeemed?: unknown;
   items?: unknown;
 };
@@ -38,18 +49,32 @@ function wholePoints(value: number) {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as CheckoutBody;
-    const customerName = String(body.customerName ?? "").trim();
-    const phone = String(body.phone ?? "").trim();
+    const recipientName = String(body.recipientName ?? "").trim();
+    const customerName = recipientName;
+    const phoneNumber = String(body.phoneNumber ?? body.phone ?? "").trim();
+    const phone = phoneNumber;
     const address = String(body.address ?? "").trim();
-    const notes = body.notes == null || String(body.notes).trim() === "" ? null : String(body.notes).trim();
+    const deliveryTimeRaw = String(body.deliveryTime ?? "").trim();
+    const deliveryDate = new Date(deliveryTimeRaw);
+    const deliveryTime = Number.isNaN(deliveryDate.getTime()) ? "" : deliveryDate.toISOString();
+    const extraNotes = body.notes == null || String(body.notes).trim() === "" ? "" : String(body.notes).trim();
+    const notes = [extraNotes, deliveryTime ? `deliveryTime: ${deliveryTime}` : ""].filter(Boolean).join("\n") || null;
     const totalAmount = Number(body.totalAmount);
-    const shippingFee = Number(body.shippingFee ?? 0);
+    const zoneId = String(body.zoneId ?? "").trim();
     const items = Array.isArray(body.items) ? body.items : [];
+    const zone = zoneId ? await findActiveDeliveryZone(zoneId) : null;
+    const shippingFee = zone?.deliveryFee ?? Number.NaN;
+    const requestedFee = Number(body.deliveryFee ?? body.shippingFee);
 
     const cookieStore = await cookies();
     const session = readSessionToken(cookieStore.get(sessionCookieName())?.value);
     const customer = session ? await findCustomerById(session.id) : null;
-    const customerId = customer?.id?.trim() || "";
+
+    if (!customer) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
+    const customerId = customer.id.trim();
     const isGuest = !customerId || !phone;
 
     const normalizedItems = items.flatMap((raw) => {
@@ -69,7 +94,14 @@ export async function POST(request: Request) {
       return [{ productId, quantity, price }];
     });
 
-    if (!customerName || !phone || !address || normalizedItems.length !== items.length || items.length === 0) {
+    if (
+      !customerName ||
+      !phone ||
+      !address ||
+      !deliveryTime ||
+      normalizedItems.length !== items.length ||
+      items.length === 0
+    ) {
       return NextResponse.json({ error: "invalid" }, { status: 400 });
     }
 
@@ -80,8 +112,6 @@ export async function POST(request: Request) {
     const pointsEarned = isGuest
       ? 0
       : wholePoints(pointsForAmount(subtotal - discount, loyalty.earnRatio));
-    const shippingAllowed = SHIPPING_FEES.some((fee) => fee === shippingFee);
-
     if (
       !isGuest &&
       (!customer || pointsRedeemed > customer.pointsBalance || discount - subtotal > 0.001)
@@ -90,11 +120,30 @@ export async function POST(request: Request) {
     }
 
     if (
-      !shippingAllowed ||
+      !zone ||
+      !Number.isFinite(requestedFee) ||
+      Math.abs(requestedFee - shippingFee) > 0.02 ||
       !Number.isFinite(totalAmount) ||
       Math.abs(subtotal - discount + shippingFee - totalAmount) > 0.02
     ) {
       return NextResponse.json({ error: "invalid" }, { status: 400 });
+    }
+
+    if (!isGuest && body.saveAddress === true) {
+      const title = String(body.addressTitle ?? "").trim();
+      const street = String(body.street ?? "").trim();
+      const city = String(body.city ?? "").trim() || "العين السخنة";
+
+      if (title && street && city && recipientName) {
+        await createCustomerAddress(customerId, {
+          title,
+          street,
+          city,
+          recipientName,
+          phoneNumber,
+          zoneId,
+        });
+      }
     }
 
     try {

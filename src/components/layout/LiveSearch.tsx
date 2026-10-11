@@ -253,7 +253,7 @@ export default function LiveSearch() {
                           price: hasSale ? salePrice : product.price,
                         })
                       }
-                      className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                      className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-primary-500 disabled:cursor-not-allowed disabled:bg-gray-400"
                     >
                       {isOutOfStock ? t("outOfStock") : t("add")}
                     </button>

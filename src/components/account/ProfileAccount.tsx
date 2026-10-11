@@ -183,7 +183,7 @@ export default function ProfileAccount() {
           <button
             type="button"
             onClick={() => setLoginOpen(true)}
-            className="mt-6 rounded-full bg-primary px-5 py-3 text-sm font-extrabold text-white transition hover:bg-primary-700"
+            className="mt-6 rounded-full bg-primary px-5 py-3 text-sm font-extrabold text-white transition hover:bg-primary-500"
           >
             {t("login")}
           </button>
@@ -342,7 +342,7 @@ export default function ProfileAccount() {
             <button
               type="submit"
               disabled={saving}
-              className="mt-4 w-full rounded-full bg-primary px-5 py-3 text-sm font-extrabold text-white transition hover:bg-primary-700 disabled:opacity-60 sm:w-auto"
+              className="mt-4 w-full rounded-full bg-primary px-5 py-3 text-sm font-extrabold text-white transition hover:bg-primary-500 disabled:opacity-60 sm:w-auto"
             >
               {saving ? t("savingAddress") : t("saveAddress")}
             </button>

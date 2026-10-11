@@ -115,7 +115,7 @@ export default function ProductCard({
         </p>
       )}
       {ready ? (
-        <p className="mt-2 inline-flex w-fit rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">
+        <p className="mt-2 inline-flex w-fit rounded-full bg-primary-50 px-2.5 py-1 text-xs font-bold text-primary-800">
           {t("earnPoints", { count: earnedPoints })}
         </p>
       ) : null}
@@ -126,7 +126,7 @@ export default function ProductCard({
         className={`mt-auto w-full rounded-full px-3 py-2.5 text-sm font-bold text-white ${
           isOutOfStock
             ? "cursor-not-allowed bg-gray-400"
-            : "bg-primary transition duration-200 hover:-translate-y-0.5 hover:bg-primary-700 hover:shadow-lg active:translate-y-0"
+            : "bg-primary transition duration-200 hover:-translate-y-0.5 hover:bg-primary-500 hover:shadow-lg active:translate-y-0"
         }`}
       >
         {isOutOfStock ? t("outOfStock") : t("addToCart")}

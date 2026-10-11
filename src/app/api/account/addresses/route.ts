@@ -1,4 +1,5 @@
 import { createCustomerAddress, listCustomerAddresses } from "@/lib/accountData";
+import { findActiveDeliveryZone } from "@/lib/deliveryZones";
 import { currentCustomer } from "@/lib/erpAccount";
 import { NextResponse } from "next/server";
 
@@ -32,17 +33,34 @@ export async function POST(request: Request) {
     title?: unknown;
     street?: unknown;
     city?: unknown;
+    recipientName?: unknown;
+    phoneNumber?: unknown;
+    zoneId?: unknown;
   } | null;
   const title = String(body?.title ?? "").trim();
   const street = String(body?.street ?? "").trim();
   const city = String(body?.city ?? "").trim();
+  const recipientName = String(body?.recipientName ?? "").trim();
+  const phoneNumber = String(body?.phoneNumber ?? "").trim();
+  const zoneId = String(body?.zoneId ?? "").trim();
 
-  if (!title || !street || !city) {
+  if (!title || !street) {
+    return NextResponse.json({ error: "invalid" }, { status: 400 });
+  }
+
+  if (zoneId && !(await findActiveDeliveryZone(zoneId))) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
 
   try {
-    const address = await createCustomerAddress(customer.id, { title, street, city });
+    const address = await createCustomerAddress(customer.id, {
+      title,
+      street,
+      city: city || "العين السخنة",
+      recipientName,
+      phoneNumber,
+      zoneId,
+    });
 
     return NextResponse.json({ address }, { status: 201 });
   } catch (error) {

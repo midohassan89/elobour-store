@@ -84,6 +84,7 @@ export function readSessionToken(token: string | undefined): StoreCustomer | nul
     return {
       id: payload.id,
       phone: payload.phone,
+      name: typeof payload.name === "string" && payload.name.trim() ? payload.name : null,
       pointsBalance: payload.pointsBalance,
     };
   } catch {
