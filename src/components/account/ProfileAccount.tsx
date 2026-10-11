@@ -1,13 +1,14 @@
 "use client";
 
+import OrderCards from "@/components/account/OrderCards";
+import { ReturnStatusBadge } from "@/components/account/StatusBadge";
 import LoginModal from "@/components/auth/LoginModal";
 import { useI18n } from "@/components/i18n/LanguageProvider";
-import { canCancelOrder, canRequestReturn, normalizeOrderStatus, type OrderStatus } from "@/lib/orderStatus";
-import type { TranslationKey } from "@/locales/types";
+import type { AccountReturnRequest } from "@/lib/accountData";
 import { useAuthStore } from "@/store/authStore";
 import { maskPhone } from "@/utils/maskPhone";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 type AccountOrder = {
   id: string;
@@ -17,6 +18,7 @@ type AccountOrder = {
   pointsEarned: number;
   pointsRedeemed: number;
   createdAt: string;
+  returnRequests?: { id: string }[];
   items: {
     id: string;
     productName: string;
@@ -36,39 +38,10 @@ type AccountAddress = {
 const fieldClassName =
   "w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20";
 
-const STATUS_LABELS: Record<OrderStatus, TranslationKey> = {
-  PENDING: "statusPending",
-  CONFIRMED: "statusConfirmed",
-  PREPARING: "statusPreparing",
-  SHIPPED: "statusShipped",
-  COMPLETED: "statusCompleted",
-  DELIVERED: "statusCompleted",
-  CANCELLED: "statusCancelled",
-  RETURNED: "statusReturned",
-  PARTIALLY_RETURNED: "statusPartiallyReturned",
-};
-
-const STATUS_CLASSES: Record<OrderStatus, string> = {
-  PENDING: "bg-amber-50 text-amber-800",
-  CONFIRMED: "bg-primary-50 text-primary-800",
-  PREPARING: "bg-orange-50 text-orange-800",
-  SHIPPED: "bg-sky-50 text-sky-800",
-  COMPLETED: "bg-green-50 text-green-800",
-  DELIVERED: "bg-green-50 text-green-800",
-  CANCELLED: "bg-red-50 text-red-700",
-  RETURNED: "bg-red-50 text-red-700",
-  PARTIALLY_RETURNED: "bg-red-50 text-red-700",
-};
-
-function statusKey(status: string): TranslationKey | null {
-  const normalized = normalizeOrderStatus(status);
-  return normalized ? STATUS_LABELS[normalized] : null;
-}
-
-function statusClassName(status: string) {
-  const normalized = normalizeOrderStatus(status);
-  return normalized ? STATUS_CLASSES[normalized] : "bg-stone-100 text-stone-600";
-}
+const tabClassName = (selected: boolean) =>
+  `rounded-xl px-2 py-2.5 text-sm font-extrabold transition ${
+    selected ? "bg-white text-primary shadow-sm" : "text-stone-600 hover:text-stone-900"
+  }`;
 
 export default function ProfileAccount() {
   const { t, language } = useI18n();
@@ -76,8 +49,9 @@ export default function ProfileAccount() {
   const authReady = useAuthStore((state) => state.ready);
   const hydrate = useAuthStore((state) => state.hydrate);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [tab, setTab] = useState<"orders" | "addresses">("orders");
+  const [tab, setTab] = useState<"orders" | "returns" | "addresses">("orders");
   const [orders, setOrders] = useState<AccountOrder[]>([]);
+  const [returns, setReturns] = useState<AccountReturnRequest[]>([]);
   const [addresses, setAddresses] = useState<AccountAddress[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -88,6 +62,8 @@ export default function ProfileAccount() {
   const [formError, setFormError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState("");
   const [cancelErrorId, setCancelErrorId] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const hasLoaded = useRef(false);
 
   useEffect(() => {
     if (!authReady) {
@@ -96,27 +72,40 @@ export default function ProfileAccount() {
   }, [authReady, hydrate]);
 
   useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get("tab");
+    if (next === "orders" || next === "returns" || next === "addresses") {
+      setTab(next);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!user) {
       return;
     }
 
     const controller = new AbortController();
-    setLoading(true);
+    if (!hasLoaded.current) {
+      setLoading(true);
+    }
     setLoadError(null);
 
     Promise.all([
       fetch("/api/account/orders", { cache: "no-store", signal: controller.signal }),
+      fetch("/api/account/returns", { cache: "no-store", signal: controller.signal }),
       fetch("/api/account/addresses", { cache: "no-store", signal: controller.signal }),
     ])
-      .then(async ([ordersResponse, addressesResponse]) => {
-        if (!ordersResponse.ok || !addressesResponse.ok) {
+      .then(async ([ordersResponse, returnsResponse, addressesResponse]) => {
+        if (!ordersResponse.ok || !returnsResponse.ok || !addressesResponse.ok) {
           throw new Error("failed");
         }
 
         const ordersPayload = (await ordersResponse.json()) as { orders?: AccountOrder[] };
+        const returnsPayload = (await returnsResponse.json()) as { returns?: AccountReturnRequest[] };
         const addressesPayload = (await addressesResponse.json()) as { addresses?: AccountAddress[] };
         setOrders(Array.isArray(ordersPayload.orders) ? ordersPayload.orders : []);
+        setReturns(Array.isArray(returnsPayload.returns) ? returnsPayload.returns : []);
         setAddresses(Array.isArray(addressesPayload.addresses) ? addressesPayload.addresses : []);
+        hasLoaded.current = true;
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -132,7 +121,7 @@ export default function ProfileAccount() {
       });
 
     return () => controller.abort();
-  }, [user, t]);
+  }, [user, t, refreshKey]);
 
   async function cancelOrder(orderId: string) {
     if (!window.confirm(t("cancelOrderConfirm"))) {
@@ -235,27 +224,14 @@ export default function ProfileAccount() {
         <p className="mt-1 text-sm font-bold text-stone-500">{maskPhone(user.phone)}</p>
       </header>
 
-      <div className="mb-6 grid grid-cols-2 gap-2 rounded-full bg-stone-100 p-1" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "orders"}
-          onClick={() => setTab("orders")}
-          className={`rounded-full px-3 py-2.5 text-sm font-extrabold transition ${
-            tab === "orders" ? "bg-white text-primary shadow-sm" : "text-stone-600"
-          }`}
-        >
+      <div className="mb-6 grid grid-cols-3 gap-1 rounded-2xl bg-stone-100 p-1" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === "orders"} onClick={() => setTab("orders")} className={tabClassName(tab === "orders")}>
           {t("myOrders")}
         </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "addresses"}
-          onClick={() => setTab("addresses")}
-          className={`rounded-full px-3 py-2.5 text-sm font-extrabold transition ${
-            tab === "addresses" ? "bg-white text-primary shadow-sm" : "text-stone-600"
-          }`}
-        >
+        <button type="button" role="tab" aria-selected={tab === "returns"} onClick={() => setTab("returns")} className={tabClassName(tab === "returns")}>
+          {t("myReturns")}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === "addresses"} onClick={() => setTab("addresses")} className={tabClassName(tab === "addresses")}>
           {t("myAddresses")}
         </button>
       </div>
@@ -270,19 +246,33 @@ export default function ProfileAccount() {
               {t("ordersEmpty")}
             </p>
           ) : null}
-          {orders.map((order) => {
-            const label = statusKey(order.status);
-            const created = order.createdAt ? new Date(order.createdAt) : null;
+          <OrderCards
+            orders={orders}
+            cancellingId={cancellingId}
+            cancelErrorId={cancelErrorId}
+            onCancel={(orderId) => void cancelOrder(orderId)}
+            onReturnCreated={() => setRefreshKey((current) => current + 1)}
+          />
+        </div>
+      ) : null}
+
+      {tab === "returns" && !loading ? (
+        <div className="space-y-4">
+          {returns.length === 0 && !loadError ? (
+            <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500">
+              {t("returnsEmpty")}
+            </p>
+          ) : null}
+          {returns.map((request) => {
+            const created = request.createdAt ? new Date(request.createdAt) : null;
 
             return (
-              <article key={order.id} className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+              <article key={request.id} className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Link href={`/account/orders/${order.id}`} className="text-sm font-extrabold text-stone-900 hover:text-primary">
-                    #{order.id.slice(-6)}
+                  <Link href={`/account/orders/${request.orderId}`} className="text-sm font-extrabold text-stone-900 hover:text-primary">
+                    #{request.orderId.slice(-6)}
                   </Link>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${statusClassName(order.status)}`}>
-                    {label ? t(label) : order.status}
-                  </span>
+                  <ReturnStatusBadge status={request.status} />
                 </div>
                 {created && !Number.isNaN(created.getTime()) ? (
                   <p className="mt-1 text-xs font-semibold text-stone-500">
@@ -296,53 +286,18 @@ export default function ProfileAccount() {
                   </p>
                 ) : null}
                 <ul className="mt-3 space-y-1.5 text-sm text-stone-700">
-                  {order.items.map((item) => (
-                    <li key={item.id} className="flex items-start justify-between gap-3">
-                      <span>
-                        {item.productName} × {item.quantity}
-                      </span>
-                      <span className="shrink-0 font-bold">
-                        {item.price} {t("currency")}
-                      </span>
+                  {request.items.map((item) => (
+                    <li key={item.id}>
+                      {item.productName} × {item.quantity}
                     </li>
                   ))}
                 </ul>
-                {order.address ? <p className="mt-3 text-xs leading-5 text-stone-500">{order.address}</p> : null}
-                <p className="mt-3 text-sm font-extrabold text-stone-950">
-                  {t("orderTotal")}: {order.totalAmount} {t("currency")}
-                </p>
-                {canCancelOrder(order.status) || canRequestReturn(order.status) ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {canCancelOrder(order.status) ? (
-                      <button
-                        type="button"
-                        onClick={() => void cancelOrder(order.id)}
-                        disabled={cancellingId === order.id}
-                        className="rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-extrabold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {cancellingId === order.id ? t("cancellingOrder") : t("cancelOrder")}
-                      </button>
-                    ) : null}
-                    {canRequestReturn(order.status) ? (
-                      <Link
-                        href={`/account/orders/${order.id}`}
-                        className="rounded-full bg-primary px-4 py-2 text-sm font-extrabold text-white transition hover:bg-primary-500"
-                      >
-                        {t("requestReturn")}
-                      </Link>
-                    ) : (
-                      <Link
-                        href={`/account/orders/${order.id}`}
-                        className="rounded-full border border-primary px-4 py-2 text-sm font-extrabold text-primary transition hover:bg-primary-50"
-                      >
-                        {t("viewOrder")}
-                      </Link>
-                    )}
-                  </div>
-                ) : null}
-                {cancelErrorId === order.id ? (
-                  <p className="mt-2 text-sm font-bold text-red-600">{t("cancelOrderFailed")}</p>
-                ) : null}
+                <Link
+                  href={`/account/returns/${request.id}`}
+                  className="mt-4 inline-flex rounded-full border border-primary bg-white px-4 py-2 text-sm font-extrabold text-primary transition hover:bg-primary-50"
+                >
+                  {t("trackReturn")}
+                </Link>
               </article>
             );
           })}

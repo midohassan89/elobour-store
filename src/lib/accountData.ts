@@ -18,6 +18,7 @@ export type AccountOrder = {
   pointsRedeemed: number;
   createdAt: string;
   items: AccountOrderItem[];
+  returnRequests: { id: string }[];
 };
 
 export type AccountReturnItem = {
@@ -29,6 +30,7 @@ export type AccountReturnItem = {
 
 export type AccountReturnRequest = {
   id: string;
+  orderId: string;
   status: string;
   createdAt: string;
   items: AccountReturnItem[];
@@ -36,6 +38,7 @@ export type AccountReturnRequest = {
 
 export type AccountOrderDetails = AccountOrder & {
   returns: AccountReturnRequest[];
+  returnRequests: AccountReturnRequest[];
 };
 
 export type AccountAddress = {
@@ -88,6 +91,19 @@ export async function listCustomerOrders(customerId: string): Promise<AccountOrd
     },
   });
 
+  const returnRows = await prisma.$queryRaw<Array<{ id: string; orderId: string }>>`
+    SELECT id, orderId
+    FROM ReturnRequest
+    WHERE customerId = ${customerId}
+  `;
+  const returnRequestsByOrder = new Map<string, { id: string }[]>();
+
+  for (const row of returnRows) {
+    const current = returnRequestsByOrder.get(row.orderId) ?? [];
+    current.push({ id: row.id });
+    returnRequestsByOrder.set(row.orderId, current);
+  }
+
   return orders.map((order) => ({
     id: order.id,
     address: order.address,
@@ -102,6 +118,7 @@ export async function listCustomerOrders(customerId: string): Promise<AccountOrd
       quantity: item.quantity,
       price: item.price,
     })),
+    returnRequests: returnRequestsByOrder.get(order.id) ?? [],
   }));
 }
 
@@ -354,6 +371,7 @@ export async function cancelCustomerOrder(customerId: string, orderId: string) {
 
 type ReturnRow = {
   id: string;
+  orderId: string;
   status: string;
   createdAt: string | Date;
   itemId: string;
@@ -361,6 +379,29 @@ type ReturnRow = {
   quantity: number | bigint;
   productName: string;
 };
+
+function groupReturnRows(rows: ReturnRow[]) {
+  const returns = new Map<string, AccountReturnRequest>();
+
+  for (const row of rows) {
+    const current = returns.get(row.id) ?? {
+      id: row.id,
+      orderId: row.orderId,
+      status: row.status,
+      createdAt: asIso(row.createdAt),
+      items: [],
+    };
+    current.items.push({
+      id: row.itemId,
+      orderItemId: row.orderItemId,
+      productName: row.productName,
+      quantity: Number(row.quantity),
+    });
+    returns.set(row.id, current);
+  }
+
+  return [...returns.values()];
+}
 
 function asIso(value: string | Date) {
   const date = value instanceof Date ? value : new Date(value);
@@ -386,6 +427,7 @@ export async function getCustomerOrder(customerId: string, orderId: string): Pro
   const rows = await prisma.$queryRaw<ReturnRow[]>`
     SELECT
       ReturnRequest.id AS id,
+      ReturnRequest.orderId AS orderId,
       ReturnRequest.status AS status,
       ReturnRequest.createdAt AS createdAt,
       ReturnItem.id AS itemId,
@@ -401,23 +443,7 @@ export async function getCustomerOrder(customerId: string, orderId: string): Pro
     ORDER BY ReturnRequest.createdAt DESC
   `;
 
-  const returns = new Map<string, AccountReturnRequest>();
-
-  for (const row of rows) {
-    const current = returns.get(row.id) ?? {
-      id: row.id,
-      status: row.status,
-      createdAt: asIso(row.createdAt),
-      items: [],
-    };
-    current.items.push({
-      id: row.itemId,
-      orderItemId: row.orderItemId,
-      productName: row.productName,
-      quantity: Number(row.quantity),
-    });
-    returns.set(row.id, current);
-  }
+  const returns = groupReturnRows(rows);
 
   return {
     id: order.id,
@@ -433,8 +459,53 @@ export async function getCustomerOrder(customerId: string, orderId: string): Pro
       quantity: item.quantity,
       price: item.price,
     })),
-    returns: [...returns.values()],
+    returns,
+    returnRequests: returns,
   };
+}
+
+export async function listCustomerReturns(customerId: string): Promise<AccountReturnRequest[]> {
+  const rows = await prisma.$queryRaw<ReturnRow[]>`
+    SELECT
+      ReturnRequest.id AS id,
+      ReturnRequest.orderId AS orderId,
+      ReturnRequest.status AS status,
+      ReturnRequest.createdAt AS createdAt,
+      ReturnItem.id AS itemId,
+      ReturnItem.orderItemId AS orderItemId,
+      ReturnItem.quantity AS quantity,
+      Product.name AS productName
+    FROM ReturnRequest
+    INNER JOIN ReturnItem ON ReturnItem.returnRequestId = ReturnRequest.id
+    INNER JOIN OrderItem ON OrderItem.id = ReturnItem.orderItemId
+    INNER JOIN Product ON Product.id = OrderItem.productId
+    WHERE ReturnRequest.customerId = ${customerId}
+    ORDER BY ReturnRequest.createdAt DESC
+  `;
+
+  return groupReturnRows(rows);
+}
+
+export async function getCustomerReturn(customerId: string, returnId: string): Promise<AccountReturnRequest | null> {
+  const rows = await prisma.$queryRaw<ReturnRow[]>`
+    SELECT
+      ReturnRequest.id AS id,
+      ReturnRequest.orderId AS orderId,
+      ReturnRequest.status AS status,
+      ReturnRequest.createdAt AS createdAt,
+      ReturnItem.id AS itemId,
+      ReturnItem.orderItemId AS orderItemId,
+      ReturnItem.quantity AS quantity,
+      Product.name AS productName
+    FROM ReturnRequest
+    INNER JOIN ReturnItem ON ReturnItem.returnRequestId = ReturnRequest.id
+    INNER JOIN OrderItem ON OrderItem.id = ReturnItem.orderItemId
+    INNER JOIN Product ON Product.id = OrderItem.productId
+    WHERE ReturnRequest.id = ${returnId}
+      AND ReturnRequest.customerId = ${customerId}
+  `;
+
+  return groupReturnRows(rows)[0] ?? null;
 }
 
 export async function createCustomerReturn(

@@ -132,7 +132,9 @@ export type Dictionary = {
   profileLoginTitle: string;
   profileLoginBody: string;
   myOrders: string;
+  myReturns: string;
   myAddresses: string;
+  returnsEmpty: string;
   ordersEmpty: string;
   addressesEmpty: string;
   orderTotal: string;
@@ -152,7 +154,12 @@ export type Dictionary = {
   requestReturnConfirm: string;
   returnContactSupport: string;
   viewOrder: string;
+  trackOrder: string;
+  trackReturn: string;
   backToOrders: string;
+  backToReturns: string;
+  returnRequestedLabel: string;
+  returnNotFound: string;
   orderNotFound: string;
   confirmReturnRequest: string;
   returnSelectItems: string;
