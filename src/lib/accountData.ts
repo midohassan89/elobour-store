@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { canCancelOrder, canRequestReturn } from "@/lib/orderStatus";
 import { prisma } from "@/lib/prisma";
 
 export type AccountOrderItem = {
@@ -17,6 +18,24 @@ export type AccountOrder = {
   pointsRedeemed: number;
   createdAt: string;
   items: AccountOrderItem[];
+};
+
+export type AccountReturnItem = {
+  id: string;
+  orderItemId: string;
+  productName: string;
+  quantity: number;
+};
+
+export type AccountReturnRequest = {
+  id: string;
+  status: string;
+  createdAt: string;
+  items: AccountReturnItem[];
+};
+
+export type AccountOrderDetails = AccountOrder & {
+  returns: AccountReturnRequest[];
 };
 
 export type AccountAddress = {
@@ -235,5 +254,269 @@ export async function deleteCustomerAddress(customerId: string, addressId: strin
     }
 
     return true;
+  });
+}
+
+export async function cancelCustomerOrder(customerId: string, orderId: string) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findFirst({
+      where: { id: orderId, customerId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: { id: true, linkedProductId: true, bundleMultiplier: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return "not_found" as const;
+    }
+
+    if (!canCancelOrder(order.status)) {
+      return "not_allowed" as const;
+    }
+
+    await tx.order.update({
+      where: { id: order.id },
+      data: { status: "CANCELLED" },
+    });
+
+    for (const item of order.items) {
+      const product = item.product;
+      const targetId =
+        product.linkedProductId && product.bundleMultiplier ? product.linkedProductId : product.id;
+      const amount =
+        product.linkedProductId && product.bundleMultiplier
+          ? item.quantity * product.bundleMultiplier
+          : item.quantity;
+      const updated = await tx.product.update({
+        where: { id: targetId },
+        data: { stockQuantity: { increment: amount } },
+        select: { stockQuantity: true },
+      });
+
+      if (updated.stockQuantity > 0) {
+        await tx.product.update({
+          where: { id: targetId },
+          data: { stockStatus: "instock" },
+        });
+      }
+    }
+
+    const earned = order.pointsEarned ?? 0;
+    const redeemed = order.pointsRedeemed ?? 0;
+
+    if (earned > 0 || redeemed > 0) {
+      const customer = await tx.customer.findUnique({
+        where: { id: customerId },
+        select: { pointsBalance: true },
+      });
+
+      if (customer) {
+        await tx.customer.update({
+          where: { id: customerId },
+          data: {
+            pointsBalance: Math.max(0, customer.pointsBalance + redeemed - earned),
+          },
+        });
+
+        if (redeemed > 0) {
+          await tx.pointsTransaction.create({
+            data: {
+              points: redeemed,
+              type: "EARN",
+              description: `Cancel order ${order.id}`,
+              customer: { connect: { id: customerId } },
+            },
+          });
+        }
+
+        if (earned > 0) {
+          await tx.pointsTransaction.create({
+            data: {
+              points: -earned,
+              type: "REDEEM",
+              description: `Cancel order ${order.id}`,
+              customer: { connect: { id: customerId } },
+            },
+          });
+        }
+      }
+    }
+
+    return "ok" as const;
+  });
+}
+
+type ReturnRow = {
+  id: string;
+  status: string;
+  createdAt: string | Date;
+  itemId: string;
+  orderItemId: string;
+  quantity: number | bigint;
+  productName: string;
+};
+
+function asIso(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
+}
+
+export async function getCustomerOrder(customerId: string, orderId: string): Promise<AccountOrderDetails | null> {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, customerId },
+    include: {
+      items: {
+        include: {
+          product: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  if (!order) {
+    return null;
+  }
+
+  const rows = await prisma.$queryRaw<ReturnRow[]>`
+    SELECT
+      ReturnRequest.id AS id,
+      ReturnRequest.status AS status,
+      ReturnRequest.createdAt AS createdAt,
+      ReturnItem.id AS itemId,
+      ReturnItem.orderItemId AS orderItemId,
+      ReturnItem.quantity AS quantity,
+      Product.name AS productName
+    FROM ReturnRequest
+    INNER JOIN ReturnItem ON ReturnItem.returnRequestId = ReturnRequest.id
+    INNER JOIN OrderItem ON OrderItem.id = ReturnItem.orderItemId
+    INNER JOIN Product ON Product.id = OrderItem.productId
+    WHERE ReturnRequest.orderId = ${orderId}
+      AND ReturnRequest.customerId = ${customerId}
+    ORDER BY ReturnRequest.createdAt DESC
+  `;
+
+  const returns = new Map<string, AccountReturnRequest>();
+
+  for (const row of rows) {
+    const current = returns.get(row.id) ?? {
+      id: row.id,
+      status: row.status,
+      createdAt: asIso(row.createdAt),
+      items: [],
+    };
+    current.items.push({
+      id: row.itemId,
+      orderItemId: row.orderItemId,
+      productName: row.productName,
+      quantity: Number(row.quantity),
+    });
+    returns.set(row.id, current);
+  }
+
+  return {
+    id: order.id,
+    address: order.address,
+    totalAmount: order.totalAmount,
+    status: order.status,
+    pointsEarned: order.pointsEarned ?? 0,
+    pointsRedeemed: order.pointsRedeemed ?? 0,
+    createdAt: order.createdAt.toISOString(),
+    items: order.items.map((item) => ({
+      id: item.id,
+      productName: item.product.name,
+      quantity: item.quantity,
+      price: item.price,
+    })),
+    returns: [...returns.values()],
+  };
+}
+
+export async function createCustomerReturn(
+  customerId: string,
+  orderId: string,
+  items: Array<{ orderItemId: string; quantity: number }>,
+) {
+  const requested = new Map<string, number>();
+
+  for (const item of items) {
+    const orderItemId = item.orderItemId.trim();
+    if (!orderItemId || !Number.isInteger(item.quantity) || item.quantity < 1) {
+      return { error: "invalid" as const };
+    }
+
+    requested.set(orderItemId, (requested.get(orderItemId) ?? 0) + item.quantity);
+  }
+
+  if (requested.size === 0) {
+    return { error: "invalid" as const };
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findFirst({
+      where: { id: orderId, customerId },
+      select: {
+        id: true,
+        status: true,
+        items: { select: { id: true, quantity: true } },
+      },
+    });
+
+    if (!order) {
+      return { error: "not_found" as const };
+    }
+
+    if (!canRequestReturn(order.status)) {
+      return { error: "not_allowed" as const };
+    }
+
+    const purchased = new Map(order.items.map((item) => [item.id, item.quantity]));
+
+    for (const orderItemId of requested.keys()) {
+      if (!purchased.has(orderItemId)) {
+        return { error: "invalid" as const };
+      }
+    }
+
+    const reservedRows = await tx.$queryRaw<Array<{ orderItemId: string; quantity: number | bigint }>>`
+      SELECT ReturnItem.orderItemId AS orderItemId, ReturnItem.quantity AS quantity
+      FROM ReturnItem
+      INNER JOIN ReturnRequest ON ReturnRequest.id = ReturnItem.returnRequestId
+      WHERE ReturnRequest.orderId = ${orderId}
+        AND ReturnRequest.status != 'CANCELLED'
+    `;
+    const reserved = new Map<string, number>();
+
+    for (const row of reservedRows) {
+      reserved.set(row.orderItemId, (reserved.get(row.orderItemId) ?? 0) + Number(row.quantity));
+    }
+
+    for (const [orderItemId, quantity] of requested) {
+      if ((reserved.get(orderItemId) ?? 0) + quantity > (purchased.get(orderItemId) ?? 0)) {
+        return { error: "exceeds" as const };
+      }
+    }
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    await tx.$executeRaw`
+      INSERT INTO ReturnRequest (id, orderId, customerId, status, pointsDeducted, createdAt, updatedAt)
+      VALUES (${id}, ${orderId}, ${customerId}, 'PENDING', 0, ${now}, ${now})
+    `;
+
+    for (const [orderItemId, quantity] of requested) {
+      await tx.$executeRaw`
+        INSERT INTO ReturnItem (id, returnRequestId, orderItemId, quantity)
+        VALUES (${randomUUID()}, ${id}, ${orderItemId}, ${quantity})
+      `;
+    }
+
+    return { id };
   });
 }

@@ -2,9 +2,11 @@
 
 import LoginModal from "@/components/auth/LoginModal";
 import { useI18n } from "@/components/i18n/LanguageProvider";
+import { canCancelOrder, canRequestReturn, normalizeOrderStatus, type OrderStatus } from "@/lib/orderStatus";
 import type { TranslationKey } from "@/locales/types";
 import { useAuthStore } from "@/store/authStore";
 import { maskPhone } from "@/utils/maskPhone";
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 type AccountOrder = {
@@ -34,40 +36,38 @@ type AccountAddress = {
 const fieldClassName =
   "w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20";
 
+const STATUS_LABELS: Record<OrderStatus, TranslationKey> = {
+  PENDING: "statusPending",
+  CONFIRMED: "statusConfirmed",
+  PREPARING: "statusPreparing",
+  SHIPPED: "statusShipped",
+  COMPLETED: "statusCompleted",
+  DELIVERED: "statusCompleted",
+  CANCELLED: "statusCancelled",
+  RETURNED: "statusReturned",
+  PARTIALLY_RETURNED: "statusPartiallyReturned",
+};
+
+const STATUS_CLASSES: Record<OrderStatus, string> = {
+  PENDING: "bg-amber-50 text-amber-800",
+  CONFIRMED: "bg-primary-50 text-primary-800",
+  PREPARING: "bg-orange-50 text-orange-800",
+  SHIPPED: "bg-sky-50 text-sky-800",
+  COMPLETED: "bg-green-50 text-green-800",
+  DELIVERED: "bg-green-50 text-green-800",
+  CANCELLED: "bg-red-50 text-red-700",
+  RETURNED: "bg-red-50 text-red-700",
+  PARTIALLY_RETURNED: "bg-red-50 text-red-700",
+};
+
 function statusKey(status: string): TranslationKey | null {
-  if (status === "PENDING" || status === "قيد الانتظار") {
-    return "statusPending";
-  }
-
-  if (status === "جاري التجهيز") {
-    return "statusPreparing";
-  }
-
-  if (status === "مكتمل") {
-    return "statusCompleted";
-  }
-
-  if (status === "ملغي") {
-    return "statusCancelled";
-  }
-
-  return null;
+  const normalized = normalizeOrderStatus(status);
+  return normalized ? STATUS_LABELS[normalized] : null;
 }
 
 function statusClassName(status: string) {
-  if (status === "مكتمل") {
-    return "bg-emerald-50 text-emerald-800";
-  }
-
-  if (status === "جاري التجهيز") {
-    return "bg-sky-50 text-sky-800";
-  }
-
-  if (status === "ملغي") {
-    return "bg-stone-100 text-stone-600";
-  }
-
-  return "bg-amber-50 text-amber-800";
+  const normalized = normalizeOrderStatus(status);
+  return normalized ? STATUS_CLASSES[normalized] : "bg-stone-100 text-stone-600";
 }
 
 export default function ProfileAccount() {
@@ -86,6 +86,8 @@ export default function ProfileAccount() {
   const [city, setCity] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState("");
+  const [cancelErrorId, setCancelErrorId] = useState("");
 
   useEffect(() => {
     if (!authReady) {
@@ -131,6 +133,37 @@ export default function ProfileAccount() {
 
     return () => controller.abort();
   }, [user, t]);
+
+  async function cancelOrder(orderId: string) {
+    if (!window.confirm(t("cancelOrderConfirm"))) {
+      return;
+    }
+
+    setCancellingId(orderId);
+    setCancelErrorId("");
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      });
+
+      if (!response.ok) {
+        setCancelErrorId(orderId);
+        return;
+      }
+
+      setOrders((current) =>
+        current.map((order) => (order.id === orderId ? { ...order, status: "CANCELLED" } : order)),
+      );
+      void hydrate();
+    } catch {
+      setCancelErrorId(orderId);
+    } finally {
+      setCancellingId("");
+    }
+  }
 
   async function addAddress(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -244,7 +277,9 @@ export default function ProfileAccount() {
             return (
               <article key={order.id} className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-extrabold text-stone-900">#{order.id.slice(-6)}</p>
+                  <Link href={`/account/orders/${order.id}`} className="text-sm font-extrabold text-stone-900 hover:text-primary">
+                    #{order.id.slice(-6)}
+                  </Link>
                   <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${statusClassName(order.status)}`}>
                     {label ? t(label) : order.status}
                   </span>
@@ -276,6 +311,38 @@ export default function ProfileAccount() {
                 <p className="mt-3 text-sm font-extrabold text-stone-950">
                   {t("orderTotal")}: {order.totalAmount} {t("currency")}
                 </p>
+                {canCancelOrder(order.status) || canRequestReturn(order.status) ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {canCancelOrder(order.status) ? (
+                      <button
+                        type="button"
+                        onClick={() => void cancelOrder(order.id)}
+                        disabled={cancellingId === order.id}
+                        className="rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-extrabold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {cancellingId === order.id ? t("cancellingOrder") : t("cancelOrder")}
+                      </button>
+                    ) : null}
+                    {canRequestReturn(order.status) ? (
+                      <Link
+                        href={`/account/orders/${order.id}`}
+                        className="rounded-full bg-primary px-4 py-2 text-sm font-extrabold text-white transition hover:bg-primary-500"
+                      >
+                        {t("requestReturn")}
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/account/orders/${order.id}`}
+                        className="rounded-full border border-primary px-4 py-2 text-sm font-extrabold text-primary transition hover:bg-primary-50"
+                      >
+                        {t("viewOrder")}
+                      </Link>
+                    )}
+                  </div>
+                ) : null}
+                {cancelErrorId === order.id ? (
+                  <p className="mt-2 text-sm font-bold text-red-600">{t("cancelOrderFailed")}</p>
+                ) : null}
               </article>
             );
           })}
