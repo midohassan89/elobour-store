@@ -95,7 +95,10 @@ export async function POST(request: Request) {
       return [{ productId, quantity, price }];
     });
     const catalog = await prisma.product.findMany({
-      where: { id: { in: requestedItems.map((item) => item.productId) } },
+      where: {
+        id: { in: requestedItems.map((item) => item.productId) },
+        isActive: true,
+      },
       select: { id: true, isWeighed: true },
     });
     const weighedById = new Map(catalog.map((product) => [product.id, product.isWeighed === true]));

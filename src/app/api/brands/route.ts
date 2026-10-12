@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
         products: {
           some: {
             isDeleted: false,
+            isActive: true,
             ...(categoryId ? { categoryId } : {}),
           },
         },
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
             products: {
               where: {
                 isDeleted: false,
+                isActive: true,
                 ...(categoryId ? { categoryId } : {}),
               },
             },

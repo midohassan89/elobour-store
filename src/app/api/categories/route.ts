@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const categories = await prisma.category.findMany({
       where: {
-        products: { some: { isDeleted: false } },
+        products: { some: { isDeleted: false, isActive: true } },
       },
       select: {
         id: true,
@@ -15,7 +15,11 @@ export async function GET() {
         nameEn: true,
         nameZh: true,
         slug: true,
-        _count: { select: { products: true } },
+        _count: {
+          select: {
+            products: { where: { isDeleted: false, isActive: true } },
+          },
+        },
       },
       orderBy: { products: { _count: "desc" } },
     });
