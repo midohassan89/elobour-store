@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
       categoryId: product.categoryId,
       stock: product.stockQuantity,
       stockStatus: product.stockStatus,
+      isWeighed: product.isWeighed === true,
       brand: product.brand
         ? {
             id: product.brand.id,

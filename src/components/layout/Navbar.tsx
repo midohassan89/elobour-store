@@ -188,7 +188,7 @@ export default function Navbar() {
           >
             <ShoppingCart className="h-6 w-6" />
             <span className="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-white">
-              {itemCount}
+              {Number.isInteger(itemCount) ? itemCount : Math.round(itemCount * 100) / 100}
             </span>
           </button>
         </div>

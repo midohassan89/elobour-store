@@ -82,6 +82,7 @@ function toSearchResults(data: unknown): Product[] {
         salePrice,
         image: typeof record.image === "string" ? record.image : undefined,
         stock: Number.isFinite(stock) ? stock : undefined,
+        isWeighed: record.isWeighed === true,
       },
     ];
   });
@@ -251,6 +252,7 @@ export default function LiveSearch() {
                           nameEn: product.nameEn,
                           nameZh: product.nameZh,
                           price: hasSale ? salePrice : product.price,
+                          isWeighed: product.isWeighed === true,
                         })
                       }
                       className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-primary-500 disabled:cursor-not-allowed disabled:bg-gray-400"

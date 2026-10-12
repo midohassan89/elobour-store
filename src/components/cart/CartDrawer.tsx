@@ -1,10 +1,11 @@
 "use client";
 
-import { Minus, Plus, Trash, X } from "lucide-react";
+import { Trash, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/components/i18n/LanguageProvider";
+import QuantityStepper from "@/components/product/QuantityStepper";
 import { useCartStore } from "@/store/cartStore";
 import { getLocalizedName } from "@/utils/localizedName";
 import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
@@ -116,27 +117,12 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-1 rounded-full border border-stone-200 p-1">
-                    <button
-                      type="button"
-                      aria-label={t("decreaseQuantity", { name: localizedName })}
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-700 transition hover:bg-primary-50 hover:text-primary"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <span className="w-6 text-center text-sm font-bold">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label={t("increaseQuantity", { name: localizedName })}
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-700 transition hover:bg-primary-50 hover:text-primary"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
+                  <QuantityStepper
+                    name={localizedName}
+                    quantity={item.quantity}
+                    isWeighed={item.isWeighed === true}
+                    onChange={(next) => updateQuantity(item.id, next)}
+                  />
 
                   <button
                     type="button"

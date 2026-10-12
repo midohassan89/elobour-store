@@ -5,6 +5,7 @@ import { useI18n } from "@/components/i18n/LanguageProvider";
 import TimelineStepper, { type TimelineStep } from "@/components/ui/TimelineStepper";
 import type { AccountOrderDetails } from "@/lib/accountData";
 import { normalizeOrderStatus } from "@/lib/orderStatus";
+import { formatQuantity } from "@/utils/quantity";
 import { useAuthStore } from "@/store/authStore";
 import { CheckCircle, ClipboardCheck, Clock, Package, Truck } from "lucide-react";
 import Link from "next/link";
@@ -157,7 +158,8 @@ export default function OrderDetails() {
             {order.items.map((item) => (
               <li key={item.id} className="flex items-start justify-between gap-3">
                 <span>
-                  {item.productName} × {item.quantity}
+                  {item.productName} × {formatQuantity(item.quantity, item.isWeighed === true)}
+                  {item.isWeighed ? ` ${t("kilogram")}` : ""}
                 </span>
                 <span className="shrink-0 font-bold">
                   {item.price} {t("currency")}

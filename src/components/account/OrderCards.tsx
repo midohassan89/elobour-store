@@ -4,6 +4,7 @@ import ReturnRequestModal from "@/components/account/ReturnRequestModal";
 import { OrderStatusBadge } from "@/components/account/StatusBadge";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { canCancelOrder, canRequestReturn, normalizeOrderStatus } from "@/lib/orderStatus";
+import { formatQuantity } from "@/utils/quantity";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -18,6 +19,7 @@ export type OrderCardData = {
     productName: string;
     quantity: number;
     price: number;
+    isWeighed?: boolean;
   }[];
   returnRequests?: { id: string }[];
 };
@@ -63,7 +65,8 @@ export default function OrderCards({ orders, cancellingId, cancelErrorId, onCanc
               {order.items.map((item) => (
                 <li key={item.id} className="flex items-start justify-between gap-3">
                   <span>
-                    {item.productName} × {item.quantity}
+                        {item.productName} × {formatQuantity(item.quantity, item.isWeighed === true)}
+                        {item.isWeighed ? ` ${t("kilogram")}` : ""}
                   </span>
                   <span className="shrink-0 font-bold">
                     {item.price} {t("currency")}

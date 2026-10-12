@@ -33,6 +33,8 @@ const en: Dictionary = {
   close: "Close",
   cartEmpty: "Your cart is empty",
   decreaseQuantity: "Decrease quantity of {{name}}",
+  quantityInput: "Quantity of {{name}}",
+  kilogram: "kg",
   increaseQuantity: "Increase quantity of {{name}}",
   removeItem: "Remove {{name}}",
   total: "Total",

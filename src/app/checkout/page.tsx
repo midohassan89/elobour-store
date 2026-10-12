@@ -13,6 +13,7 @@ import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
 import { getLocalizedName } from "@/utils/localizedName";
+import { formatQuantity } from "@/utils/quantity";
 import {
   discountForPoints,
   formatPointsAmount,
@@ -852,7 +853,8 @@ export default function CheckoutPage() {
                             {getLocalizedName(item, language)}
                           </p>
                           <p className="mt-1 text-sm text-stone-500">
-                            {item.quantity} × {item.price} {t("currency")}
+                            {formatQuantity(item.quantity, item.isWeighed === true)}
+                            {item.isWeighed ? ` ${t("kilogram")}` : ""} × {item.price} {t("currency")}
                           </p>
                         </div>
                         <p className="shrink-0 text-sm font-extrabold text-primary">

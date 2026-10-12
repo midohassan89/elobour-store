@@ -33,6 +33,8 @@ const ar: Dictionary = {
   close: "إغلاق",
   cartEmpty: "سلة المشتريات فارغة",
   decreaseQuantity: "تقليل كمية {{name}}",
+  quantityInput: "كمية {{name}}",
+  kilogram: "كجم",
   increaseQuantity: "زيادة كمية {{name}}",
   removeItem: "حذف {{name}}",
   total: "الإجمالي",

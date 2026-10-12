@@ -1,12 +1,14 @@
 "use client";
 
 import { useI18n } from "@/components/i18n/LanguageProvider";
+import QuantityStepper from "@/components/product/QuantityStepper";
 import { useCartStore } from "@/store/cartStore";
 import { getLocalizedName } from "@/utils/localizedName";
+import { quantityStep } from "@/utils/quantity";
 import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import { ShoppingBag } from "lucide-react";
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 type ProductCardProps = {
   id: string;
@@ -22,6 +24,7 @@ type ProductCardProps = {
   salePrice?: number | null;
   image?: string;
   stock?: number;
+  isWeighed?: boolean;
 };
 
 export default function ProductCard({
@@ -34,12 +37,14 @@ export default function ProductCard({
   salePrice,
   image,
   stock,
+  isWeighed = false,
 }: ProductCardProps) {
   const { t, language } = useI18n();
   const { earnRatio, ready } = useLoyaltySettings();
   const localizedName = getLocalizedName({ name, nameEn, nameZh }, language);
   const brandName = brand ? getLocalizedName(brand, language) : "";
   const addItem = useCartStore((state) => state.addItem);
+  const [quantity, setQuantity] = useState(quantityStep(isWeighed));
   const isOutOfStock = stock !== undefined && stock <= 0;
   const hasSale = salePrice != null && salePrice > 0;
   const activePrice = hasSale ? salePrice : price;
@@ -119,10 +124,26 @@ export default function ProductCard({
           {t("earnPoints", { count: earnedPoints })}
         </p>
       ) : null}
+      {isWeighed ? (
+        <div className="mt-3">
+          <QuantityStepper
+            name={localizedName}
+            quantity={quantity}
+            isWeighed
+            fluid
+            onChange={(next) => setQuantity(next < quantityStep(true) ? quantityStep(true) : next)}
+          />
+        </div>
+      ) : null}
       <button
         type="button"
         disabled={isOutOfStock}
-        onClick={() => addItem({ id, name, nameEn, nameZh, price: activePrice })}
+        onClick={() =>
+          addItem(
+            { id, name, nameEn, nameZh, price: activePrice, isWeighed },
+            isWeighed ? quantity : 1,
+          )
+        }
         className={`mt-auto w-full rounded-full px-3 py-2.5 text-sm font-bold text-white ${
           isOutOfStock
             ? "cursor-not-allowed bg-gray-400"

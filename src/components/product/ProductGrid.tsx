@@ -133,6 +133,7 @@ export default function ProductGrid({ titleKey = "products" }: ProductGridProps)
               salePrice={product.salePrice}
               image={product.image}
               stock={product.stock}
+              isWeighed={product.isWeighed === true}
             />
           ))}
         </div>

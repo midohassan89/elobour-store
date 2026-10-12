@@ -15,6 +15,7 @@ export interface Product {
   salePrice?: number | null;
   image?: string;
   stock?: number;
+  isWeighed?: boolean;
   brand?: Brand | null;
 }
 

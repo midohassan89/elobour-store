@@ -1,3 +1,4 @@
+import { quantityStep, snapQuantity } from "@/utils/quantity";
 import { create } from "zustand";
 
 export type CartItem = {
@@ -7,6 +8,7 @@ export type CartItem = {
   nameZh?: string;
   price: number;
   quantity: number;
+  isWeighed?: boolean;
 };
 
 type CartProduct = Omit<CartItem, "quantity">;
@@ -14,7 +16,7 @@ type CartProduct = Omit<CartItem, "quantity">;
 type CartState = {
   items: CartItem[];
   totalPrice: number;
-  addItem: (item: CartProduct) => void;
+  addItem: (item: CartProduct, quantity?: number) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -22,7 +24,8 @@ type CartState = {
 };
 
 function calculateTotalPrice(items: CartItem[]) {
-  return items.reduce((total, item) => total + item.price * item.quantity, 0);
+  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  return Math.round(total * 100) / 100;
 }
 
 function withTotal(items: CartItem[]) {
@@ -35,8 +38,10 @@ function withTotal(items: CartItem[]) {
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   totalPrice: 0,
-  addItem: (item) =>
+  addItem: (item, quantity) =>
     set((state) => {
+      const isWeighed = item.isWeighed === true;
+      const amount = snapQuantity(quantity ?? quantityStep(isWeighed), isWeighed);
       const existing = state.items.find((entry) => entry.id === item.id);
 
       if (existing) {
@@ -48,14 +53,16 @@ export const useCartStore = create<CartState>((set, get) => ({
                   name: item.name,
                   nameEn: item.nameEn,
                   nameZh: item.nameZh,
-                  quantity: entry.quantity + 1,
+                  price: item.price,
+                  isWeighed,
+                  quantity: snapQuantity(entry.quantity + amount, isWeighed),
                 }
               : entry,
           ),
         );
       }
 
-      return withTotal([...state.items, { ...item, quantity: 1 }]);
+      return withTotal([...state.items, { ...item, isWeighed, quantity: amount }]);
     }),
   removeItem: (id) =>
     set((state) =>
@@ -63,13 +70,17 @@ export const useCartStore = create<CartState>((set, get) => ({
     ),
   updateQuantity: (id, quantity) =>
     set((state) => {
-      if (quantity < 1) {
+      const current = state.items.find((entry) => entry.id === id);
+      const isWeighed = current?.isWeighed === true;
+      const next = snapQuantity(quantity, isWeighed);
+
+      if (!current || next < quantityStep(isWeighed)) {
         return withTotal(state.items.filter((entry) => entry.id !== id));
       }
 
       return withTotal(
         state.items.map((entry) =>
-          entry.id === id ? { ...entry, quantity } : entry,
+          entry.id === id ? { ...entry, quantity: next } : entry,
         ),
       );
     }),

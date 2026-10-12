@@ -43,6 +43,8 @@ export type Dictionary = {
   close: string;
   cartEmpty: string;
   decreaseQuantity: string;
+  quantityInput: string;
+  kilogram: string;
   increaseQuantity: string;
   removeItem: string;
   total: string;

@@ -7,6 +7,7 @@ export type AccountOrderItem = {
   productName: string;
   quantity: number;
   price: number;
+  isWeighed?: boolean;
 };
 
 export type AccountOrder = {
@@ -85,7 +86,7 @@ export async function listCustomerOrders(customerId: string): Promise<AccountOrd
     include: {
       items: {
         include: {
-          product: { select: { name: true } },
+          product: { select: { name: true, isWeighed: true } },
         },
       },
     },
@@ -117,6 +118,7 @@ export async function listCustomerOrders(customerId: string): Promise<AccountOrd
       productName: item.product.name,
       quantity: item.quantity,
       price: item.price,
+      isWeighed: item.product.isWeighed === true,
     })),
     returnRequests: returnRequestsByOrder.get(order.id) ?? [],
   }));
@@ -324,8 +326,17 @@ export async function cancelCustomerOrder(customerId: string, orderId: string) {
       }
     }
 
-    const earned = order.pointsEarned ?? 0;
     const redeemed = order.pointsRedeemed ?? 0;
+    const alreadyAwarded = await tx.pointsTransaction.findFirst({
+      where: {
+        customerId,
+        type: "EARN",
+        points: { gt: 0 },
+        description: `Order ${order.id}`,
+      },
+      select: { id: true },
+    });
+    const earned = alreadyAwarded ? (order.pointsEarned ?? 0) : 0;
 
     if (earned > 0 || redeemed > 0) {
       const customer = await tx.customer.findUnique({
@@ -414,7 +425,7 @@ export async function getCustomerOrder(customerId: string, orderId: string): Pro
     include: {
       items: {
         include: {
-          product: { select: { name: true } },
+          product: { select: { name: true, isWeighed: true } },
         },
       },
     },
@@ -458,6 +469,7 @@ export async function getCustomerOrder(customerId: string, orderId: string): Pro
       productName: item.product.name,
       quantity: item.quantity,
       price: item.price,
+      isWeighed: item.product.isWeighed === true,
     })),
     returns,
     returnRequests: returns,

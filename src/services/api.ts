@@ -86,6 +86,7 @@ function toProducts(data: unknown): Product[] | null {
       salePrice: salePrice != null && salePrice > 0 ? salePrice : null,
       image: typeof record.image === "string" && record.image.trim() !== "" ? record.image : undefined,
       stock: stock === null ? undefined : stock,
+      isWeighed: record.isWeighed === true,
       brand: toBrand(record.brand),
     });
   }

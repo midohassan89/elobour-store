@@ -5,6 +5,7 @@ import { getLoyaltySettings } from "@/lib/loyalty";
 import { findActiveDeliveryZone } from "@/lib/deliveryZones";
 import { createCustomerAddress } from "@/lib/accountData";
 import { discountForPoints, pointsForAmount } from "@/utils/points";
+import { normalizeOrderQuantity } from "@/utils/quantity";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -77,21 +78,35 @@ export async function POST(request: Request) {
     const customerId = customer.id.trim();
     const isGuest = !customerId || !phone;
 
-    const normalizedItems = items.flatMap((raw) => {
+    const requestedItems = items.flatMap((raw) => {
       if (!raw || typeof raw !== "object") {
         return [];
       }
 
       const item = raw as Partial<CheckoutItem>;
       const price = Number(item.price);
-      const quantity = Math.floor(Number(item.quantity));
+      const quantity = Number(item.quantity);
       const productId = String(item.productId ?? "").trim();
 
-      if (!productId || !Number.isFinite(price) || price < 0 || !Number.isFinite(quantity) || quantity < 1) {
+      if (!productId || !Number.isFinite(price) || price < 0 || !Number.isFinite(quantity)) {
         return [];
       }
 
       return [{ productId, quantity, price }];
+    });
+    const catalog = await prisma.product.findMany({
+      where: { id: { in: requestedItems.map((item) => item.productId) } },
+      select: { id: true, isWeighed: true },
+    });
+    const weighedById = new Map(catalog.map((product) => [product.id, product.isWeighed === true]));
+    const normalizedItems = requestedItems.flatMap((item) => {
+      const quantity = normalizeOrderQuantity(item.quantity, weighedById.get(item.productId) === true);
+
+      if (quantity === null || !weighedById.has(item.productId)) {
+        return [];
+      }
+
+      return [{ ...item, quantity }];
     });
 
     if (
@@ -210,35 +225,19 @@ export async function POST(request: Request) {
           }
         }
 
-        if (!isGuest) {
+        if (!isGuest && pointsRedeemed > 0) {
           await tx.customer.update({
             where: { id: customerId },
+            data: { pointsBalance: { decrement: pointsRedeemed } },
+          });
+          await tx.pointsTransaction.create({
             data: {
-              pointsBalance: { increment: pointsEarned - pointsRedeemed },
+              points: -pointsRedeemed,
+              type: "REDEEM",
+              description: `Order ${order.id}`,
+              customer: { connect: { id: customerId } },
             },
           });
-
-          if (pointsRedeemed > 0) {
-            await tx.pointsTransaction.create({
-              data: {
-                points: -pointsRedeemed,
-                type: "REDEEM",
-                description: `Order ${order.id}`,
-                customer: { connect: { id: customerId } },
-              },
-            });
-          }
-
-          if (pointsEarned > 0) {
-            await tx.pointsTransaction.create({
-              data: {
-                points: pointsEarned,
-                type: "EARN",
-                description: `Order ${order.id}`,
-                customer: { connect: { id: customerId } },
-              },
-            });
-          }
         }
       });
     } catch (error) {

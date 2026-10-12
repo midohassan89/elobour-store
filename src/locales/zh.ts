@@ -33,6 +33,8 @@ const zh: Dictionary = {
   close: "关闭",
   cartEmpty: "购物车是空的",
   decreaseQuantity: "减少 {{name}} 的数量",
+  quantityInput: "{{name}} 的数量",
+  kilogram: "公斤",
   increaseQuantity: "增加 {{name}} 的数量",
   removeItem: "删除 {{name}}",
   total: "合计",

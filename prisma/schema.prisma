@@ -59,8 +59,11 @@ model Product {
   barcode       String?
   price         Float
   salePrice     Float?
-  stockQuantity Int      @default(0)
+  /** Kilograms or other weight on hand. Piece items stay whole numbers. */
+  stockQuantity Float    @default(0)
   stockStatus   String   @default("instock")
+  /** Scale item: quantity is sold by weight. */
+  isWeighed     Boolean  @default(false)
   /** Pieces in one supplier carton/box. Purchase qty is packs; stock is qty × this. */
   purchasePackSize Int   @default(1)
   /** Last piece cost recorded by an opening-balance entry. */
@@ -546,7 +549,7 @@ model OrderItem {
   id        String  @id @default(cuid())
   orderId   String
   productId String
-  quantity  Int
+  quantity  Float
   price     Float
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
