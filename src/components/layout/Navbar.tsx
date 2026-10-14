@@ -2,7 +2,7 @@
 
 import { Menu, ShoppingCart, User, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import LoginModal from "@/components/auth/LoginModal";
 import LoyaltyCardModal from "@/components/loyalty/LoyaltyCardModal";
 import { useI18n } from "@/components/i18n/LanguageProvider";
@@ -120,28 +120,28 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-primary-100 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:gap-6 lg:py-4">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:flex-nowrap lg:gap-5 lg:py-4">
         <button
           type="button"
           onClick={() => setMenuOpen((open) => !open)}
           aria-expanded={menuOpen}
           aria-controls="store-menu"
           aria-label={t("menu")}
-          className="order-1 inline-flex h-12 w-12 items-center justify-center rounded-full border border-stone-200 text-stone-800 transition hover:border-primary hover:text-primary"
+          className="order-1 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-stone-200 text-stone-800 transition hover:border-primary hover:text-primary"
         >
           {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
 
         <Link
           href="/"
-          className="order-2 text-lg font-extrabold tracking-tight text-primary sm:text-2xl"
+          className="order-2 shrink-0 whitespace-nowrap text-lg font-extrabold tracking-tight text-primary sm:text-2xl"
         >
           {t("storeName")}
         </Link>
 
-        <div className="order-3 ms-auto flex flex-wrap items-center justify-end gap-2 lg:order-4">
+        <div className="order-3 ms-auto flex w-fit max-w-full flex-wrap items-center justify-end gap-2 lg:order-4 lg:ms-0 lg:max-w-sm">
           {authReady && user ? (
-            <div className="flex flex-wrap items-center justify-end gap-1.5">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5">
               <Link
                 href="/profile"
                 className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-2 text-xs font-extrabold text-stone-800 transition hover:border-primary hover:text-primary sm:text-sm"
@@ -184,7 +184,7 @@ export default function Navbar() {
             type="button"
             onClick={() => setCartOpen(true)}
             aria-label={t("cartWithCount", { count: itemCount })}
-            className="relative inline-flex h-12 w-12 items-center justify-center rounded-full border border-stone-200 text-stone-800 transition hover:border-primary hover:text-primary"
+            className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-stone-200 text-stone-800 transition hover:border-primary hover:text-primary"
           >
             <ShoppingCart className="h-6 w-6" />
             <span className="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-white">
@@ -193,8 +193,14 @@ export default function Navbar() {
           </button>
         </div>
 
-        <div className="order-4 w-full lg:order-3 lg:min-w-0 lg:flex-1">
-          <LiveSearch />
+        <div className="order-4 w-full min-w-0 lg:order-3 lg:w-auto lg:max-w-3xl lg:flex-1">
+          <Suspense
+            fallback={
+              <div className="h-12 w-full rounded-full border border-stone-200 bg-stone-50 sm:h-14" />
+            }
+          >
+            <LiveSearch />
+          </Suspense>
         </div>
       </div>
 

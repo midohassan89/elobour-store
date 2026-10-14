@@ -6,7 +6,8 @@ import type { Product } from "@/types";
 import { getLocalizedName, optionalLocalizedName } from "@/utils/localizedName";
 import { Search } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 function resolveProductImage(image: string) {
   let cleanPath = image;
@@ -90,13 +91,23 @@ function toSearchResults(data: unknown): Product[] {
 
 export default function LiveSearch() {
   const { t, language } = useI18n();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("q") ?? "";
   const addItem = useCartStore((state) => state.addItem);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [term, setTerm] = useState("");
+  const submittedQuery = useRef(urlQuery);
+  const [term, setTerm] = useState(urlQuery);
   const [debouncedTerm, setDebouncedTerm] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    submittedQuery.current = urlQuery;
+    setTerm(urlQuery);
+    setOpen(false);
+  }, [urlQuery]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -128,7 +139,10 @@ export default function LiveSearch() {
       })
       .then((data) => {
         setResults(toSearchResults(data));
-        setOpen(true);
+
+        if (submittedQuery.current !== debouncedTerm) {
+          setOpen(true);
+        }
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -160,39 +174,64 @@ export default function LiveSearch() {
   const query = term.trim();
   const showResults = open && query.length >= 2 && debouncedTerm.length >= 2;
 
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submittedQuery.current = query;
+    setOpen(false);
+
+    if (!query) {
+      return;
+    }
+
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+  }
+
   return (
     <div ref={containerRef} className="relative w-full">
-      <label htmlFor="live-search" className="sr-only">
-        {t("searchProducts")}
-      </label>
-      <Search
-        aria-hidden="true"
-        className="pointer-events-none absolute start-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400"
-      />
-      <input
-        id="live-search"
-        type="search"
-        value={term}
-        placeholder={t("searchPlaceholder")}
-        autoComplete="off"
-        onChange={(event) => {
-          const value = event.target.value;
-          setTerm(value);
+      <form onSubmit={submitSearch} className="relative w-full">
+        <label htmlFor="live-search" className="sr-only">
+          {t("searchProducts")}
+        </label>
+        <button
+          type="submit"
+          aria-label={t("searchProducts")}
+          className="absolute start-1.5 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition hover:bg-primary-50 hover:text-primary sm:h-10 sm:w-10"
+        >
+          <Search aria-hidden="true" className="h-5 w-5" />
+        </button>
+        <input
+          id="live-search"
+          type="search"
+          value={term}
+          placeholder={t("searchPlaceholder")}
+          autoComplete="off"
+          onChange={(event) => {
+            const value = event.target.value;
+            setTerm(value);
 
-          if (value.trim() === "") {
-            setDebouncedTerm("");
-            setResults([]);
-            setOpen(false);
-            setLoading(false);
-          }
-        }}
-        onFocus={() => {
-          if (query.length >= 2 && results.length > 0) {
-            setOpen(true);
-          }
-        }}
-        className="h-12 w-full rounded-full border border-stone-200 bg-stone-50 ps-12 pe-4 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20 sm:h-14"
-      />
+            if (value.trim() === "") {
+              setDebouncedTerm("");
+              setResults([]);
+              setOpen(false);
+              setLoading(false);
+            }
+          }}
+          onFocus={() => {
+            if (query.length >= 2 && results.length > 0) {
+              setOpen(true);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") {
+              return;
+            }
+
+            event.preventDefault();
+            event.currentTarget.form?.requestSubmit();
+          }}
+          className="h-12 w-full rounded-full border border-stone-200 bg-stone-50 ps-12 pe-4 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20 sm:h-14"
+        />
+      </form>
 
       {showResults ? (
         <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-2xl bg-white shadow-lg ring-1 ring-stone-200">

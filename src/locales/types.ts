@@ -25,6 +25,9 @@ export type Dictionary = {
   searchPlaceholder: string;
   searching: string;
   noResults: string;
+  noResultsFor: string;
+  searchResultsTitle: string;
+  searchPrompt: string;
   add: string;
   addToCart: string;
   outOfStock: string;

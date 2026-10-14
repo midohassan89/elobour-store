@@ -10,16 +10,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 type ProductGridProps = {
-  titleKey?: "products" | "featuredProducts";
+  titleKey?: "products" | "featuredProducts" | "searchResultsTitle";
+  queryParam?: string;
+  requireQuery?: boolean;
 };
 
-export default function ProductGrid({ titleKey = "products" }: ProductGridProps) {
+export default function ProductGrid({
+  titleKey = "products",
+  queryParam = "search",
+  requireQuery = false,
+}: ProductGridProps) {
   const router = useRouter();
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const categoryId = searchParams.get("categoryId") ?? "";
   const brandId = searchParams.get("brandId") ?? "";
-  const search = searchParams.get("search") ?? "";
+  const search = (searchParams.get(queryParam) ?? "").trim();
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -27,6 +33,10 @@ export default function ProductGrid({ titleKey = "products" }: ProductGridProps)
   const filtersRef = useRef({ categoryId, brandId, search });
 
   useEffect(() => {
+    if (requireQuery && !search) {
+      return;
+    }
+
     let ignore = false;
     const filtersChanged =
       filtersRef.current.categoryId !== categoryId ||
@@ -92,7 +102,19 @@ export default function ProductGrid({ titleKey = "products" }: ProductGridProps)
       ignore = true;
       window.clearTimeout(timeoutId);
     };
-  }, [page, categoryId, brandId, search]);
+  }, [page, categoryId, brandId, search, requireQuery]);
+
+  if (requireQuery && !search) {
+    return (
+      <section
+        aria-label={t("searchResultsTitle")}
+        className="mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6"
+      >
+        <h2 className="mb-4 text-xl font-extrabold sm:text-2xl">{t("searchResultsTitle")}</h2>
+        <p className="text-sm leading-7 text-stone-500">{t("searchPrompt")}</p>
+      </section>
+    );
+  }
 
   if (loading && productsList.length === 0) {
     return <ProductGridSkeleton />;
@@ -109,7 +131,9 @@ export default function ProductGrid({ titleKey = "products" }: ProductGridProps)
       {isEmpty ? (
         <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
           <SearchX className="h-16 w-16 text-stone-400" aria-hidden="true" />
-          <h3 className="mt-5 text-xl font-extrabold text-stone-900">{t("emptyTitle")}</h3>
+          <h3 className="mt-5 text-xl font-extrabold text-stone-900">
+            {search ? t("noResultsFor", { query: search }) : t("emptyTitle")}
+          </h3>
           <p className="mt-2 max-w-md text-sm leading-7 text-stone-500">{t("emptySubtitle")}</p>
           <button
             type="button"
