@@ -29,9 +29,13 @@ function resolveUploadFile(slug: string[]) {
     return null;
   }
 
+  const rootDir =
+    process.env.ERP_UPLOADS_DIR ||
+    [process.cwd(), "..", "egychina-erp", "public", "uploads"].join(path.sep);
+  const localDir = [process.cwd(), "public", "uploads"].join(path.sep);
   const candidates = [
-    path.join(process.cwd(), "public", "uploads", ...decodedSlug),
-    path.resolve(process.cwd(), "..", "egychina-erp", "public", "uploads", ...decodedSlug),
+    [localDir, ...decodedSlug].join(path.sep),
+    [rootDir, ...decodedSlug].join(path.sep),
   ];
 
   for (const candidate of candidates) {
