@@ -9,6 +9,7 @@ export type CartItem = {
   price: number;
   quantity: number;
   isWeighed?: boolean;
+  image?: string;
 };
 
 type CartProduct = Omit<CartItem, "quantity">;
@@ -54,6 +55,7 @@ export const useCartStore = create<CartState>((set, get) => ({
                   nameEn: item.nameEn,
                   nameZh: item.nameZh,
                   price: item.price,
+                  image: item.image,
                   isWeighed,
                   quantity: snapQuantity(entry.quantity + amount, isWeighed),
                 }

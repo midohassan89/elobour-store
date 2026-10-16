@@ -1,6 +1,7 @@
 "use client";
 
-import { Trash, X } from "lucide-react";
+import { resolveProductImage } from "@/utils/productImage";
+import { ShoppingBag, Trash, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
@@ -104,12 +105,24 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             <ul>
               {items.map((item) => {
                 const localizedName = getLocalizedName(item, language);
+                const imageUrl = resolveProductImage(item.image);
 
                 return (
                 <li
                   key={item.id}
                   className="flex items-center gap-3 border-b border-stone-100 py-4"
                 >
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100">
+                    {imageUrl ? (
+                      // Product photos stay on /uploads and must not pass through /_next/image.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <ShoppingBag className="h-5 w-5 text-stone-300" aria-hidden="true" />
+                      </div>
+                    )}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold leading-6">{localizedName}</p>
                     <p className="mt-1 text-sm text-stone-500">

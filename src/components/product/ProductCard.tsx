@@ -313,7 +313,7 @@ export default function ProductCard({
         disabled={isOutOfStock}
         onClick={() =>
           addItem(
-            { id, name, nameEn, nameZh, price: displayPrice, isWeighed },
+            { id, name, nameEn, nameZh, price: displayPrice, isWeighed, image },
             isWeighed ? quantity : 1,
           )
         }

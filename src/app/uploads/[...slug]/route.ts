@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -22,30 +21,24 @@ function decodeSegment(segment: string) {
   }
 }
 
-function resolveUploadFile(slug: string[]) {
-  const decodedSlug = slug.map(decodeSegment);
+function contentTypeFor(fileName: string) {
+  const dot = fileName.lastIndexOf(".");
+  const extension = dot >= 0 ? fileName.slice(dot).toLowerCase() : "";
+  return mimeTypes[extension] ?? "application/octet-stream";
+}
 
-  if (decodedSlug.some((segment) => segment.includes(".."))) {
-    return null;
-  }
-
-  const rootDir =
+function readUploadFile(decodedSlug: string[]) {
+  const erpUploads =
     process.env.ERP_UPLOADS_DIR ||
-    [process.cwd(), "..", "egychina-erp", "public", "uploads"].join(path.sep);
-  const localDir = [process.cwd(), "public", "uploads"].join(path.sep);
-  const candidates = [
-    [localDir, ...decodedSlug].join(path.sep),
-    [rootDir, ...decodedSlug].join(path.sep),
-  ];
+    ["", "var", "www", "egychina-erp", "public", "uploads"].join("/");
+  const filePath = [erpUploads.replace(/\/+$/, ""), ...decodedSlug].join("/");
 
-  for (const candidate of candidates) {
-    try {
-      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-        return candidate;
-      }
-    } catch {
-      continue;
+  try {
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      return fs.readFileSync(filePath);
     }
+  } catch {
+    return null;
   }
 
   return null;
@@ -56,15 +49,35 @@ export async function GET(
   { params }: { params: Promise<{ slug: string[] }> },
 ) {
   const { slug } = await params;
-  const filePath = resolveUploadFile(slug ?? []);
+  const segments = slug ?? [];
+  const decodedSlug = segments.map(decodeSegment);
 
-  if (!filePath) {
+  if (decodedSlug.length === 0 || decodedSlug.some((segment) => segment.includes(".."))) {
     return new NextResponse(null, { status: 404 });
   }
 
-  const fileBuffer = fs.readFileSync(filePath);
-  const extension = path.extname(filePath).toLowerCase();
-  const contentType = mimeTypes[extension] ?? "application/octet-stream";
+  let fileBuffer = readUploadFile(decodedSlug);
+  let contentType = contentTypeFor(decodedSlug.at(-1) ?? "");
+
+  if (!fileBuffer) {
+    try {
+      const upstream = await fetch(
+        `http://127.0.0.1:3001/uploads/${decodedSlug.map(encodeURIComponent).join("/")}`,
+      );
+
+      if (!upstream.ok) {
+        return new NextResponse(null, { status: 404 });
+      }
+
+      fileBuffer = Buffer.from(await upstream.arrayBuffer());
+      const upstreamType = upstream.headers.get("content-type")?.split(";")[0]?.trim();
+      if (upstreamType?.startsWith("image/")) {
+        contentType = upstreamType;
+      }
+    } catch {
+      return new NextResponse(null, { status: 404 });
+    }
+  }
 
   return new NextResponse(new Uint8Array(fileBuffer), {
     headers: {

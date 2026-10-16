@@ -1,45 +1,48 @@
+const UPLOAD_ORIGINS = [
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
+  "https://erp.elobour.store",
+  "https://elobour.store",
+];
+
+function isPlaceholder(value: string) {
+  return value === "/placeholder.png" || value === "placeholder.png";
+}
+
 /**
- * Product photos are served from /uploads on this site.
- * Local ERP URLs such as http://localhost:3001/uploads/... become that path,
- * and non-ASCII characters are percent-encoded exactly once.
+ * Storefront product photos are always a relative /uploads path.
+ * Localhost and production host prefixes are removed, and non-ASCII
+ * characters are percent-encoded exactly once.
  */
 export function resolveProductImage(image?: string | null) {
-  let cleanPath = image?.trim() ?? "";
-  if (!cleanPath) return "";
+  const raw = image?.trim() ?? "";
+  if (!raw || isPlaceholder(raw)) return "";
 
-  if (cleanPath.startsWith("public/")) {
-    cleanPath = `/${cleanPath.slice("public/".length)}`;
+  let cleanPath = raw;
+  const lower = cleanPath.toLowerCase();
+
+  for (const origin of UPLOAD_ORIGINS) {
+    if (!lower.startsWith(origin)) continue;
+    const rest = cleanPath.slice(origin.length);
+    if (rest === "/uploads" || rest.startsWith("/uploads/") || rest.startsWith("/uploads?")) {
+      cleanPath = rest;
+      break;
+    }
   }
 
   if (cleanPath.startsWith("uploads/")) {
     cleanPath = `/${cleanPath}`;
   }
 
-  cleanPath = cleanPath.replace(
-    /(https?:\/{2,})|(\/{2,})/gi,
-    (match, protocol: string | undefined) => {
-      if (protocol) {
-        return `${protocol.slice(0, protocol.indexOf(":") + 1)}//`;
-      }
-
-      return "/";
-    },
-  );
-
-  if (/^https?:\/\//i.test(cleanPath)) {
-    try {
-      const parsed = new URL(cleanPath);
-      if (parsed.pathname === "/uploads" || parsed.pathname.startsWith("/uploads/")) {
-        cleanPath = `${parsed.pathname}${parsed.search}${parsed.hash}`;
-      }
-    } catch {
-      // Keep the original string and encode it below.
-    }
-  }
+  if (isPlaceholder(cleanPath)) return "";
 
   try {
     return encodeURI(decodeURI(cleanPath));
   } catch {
-    return encodeURI(cleanPath);
+    try {
+      return encodeURI(cleanPath);
+    } catch {
+      return "";
+    }
   }
 }

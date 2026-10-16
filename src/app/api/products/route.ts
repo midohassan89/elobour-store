@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { resolveProductImage } from "@/utils/productImage";
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -72,8 +73,7 @@ export async function GET(request: NextRequest) {
       price: product.price,
       salePrice:
         product.salePrice != null && product.salePrice > 0 ? product.salePrice : null,
-      // Null / empty imageUrl is allowed — ProductCard shows a placeholder.
-      image: product.imageUrl || null,
+      image: resolveProductImage(product.imageUrl) || null,
       categoryId: product.categoryId,
       stock: product.stockQuantity,
       stockStatus: product.stockStatus,
