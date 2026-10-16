@@ -4,39 +4,11 @@ import { useI18n } from "@/components/i18n/LanguageProvider";
 import { useCartStore } from "@/store/cartStore";
 import type { Product } from "@/types";
 import { getLocalizedName, optionalLocalizedName } from "@/utils/localizedName";
+import { resolveProductImage } from "@/utils/productImage";
 import { Search } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-
-function resolveProductImage(image: string) {
-  let cleanPath = image;
-
-  if (cleanPath.startsWith("public/")) {
-    cleanPath = cleanPath.replace(/^public\//, "/");
-  }
-
-  if (cleanPath.startsWith("uploads/")) {
-    cleanPath = cleanPath.replace(/^uploads\//, "/uploads/");
-  }
-
-  cleanPath = cleanPath.replace(
-    /(https?:\/{2,})|(\/{2,})/gi,
-    (_match, protocol: string | undefined) => {
-      if (protocol) {
-        return `${protocol.slice(0, protocol.indexOf(":") + 1)}//`;
-      }
-
-      return "/";
-    },
-  );
-
-  if (cleanPath.startsWith("/uploads")) {
-    return `http://localhost:3001${cleanPath}`;
-  }
-
-  return cleanPath;
-}
 
 function toSearchResults(data: unknown): Product[] {
   const list = Array.isArray(data)
@@ -260,6 +232,7 @@ export default function LiveSearch() {
                           alt=""
                           fill
                           sizes="48px"
+                          unoptimized
                           className="object-cover"
                         />
                       ) : null}

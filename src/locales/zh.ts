@@ -82,6 +82,8 @@ const zh: Dictionary = {
   orderInvalid: "订单信息不完整。",
   orderFailed: "订单发送失败，请重试。",
   currency: "EGP",
+  unitPiece: "件",
+  piecePriceHint: "（{{unit}}价格：{{price}} {{currency}}）",
   exclusiveOffers: "专属优惠",
   weeklyOffersTitle: "本周超值优惠等你来",
   heroSubtitle: "立即选购新鲜杂货与进口好物，享受最优惠价格。",

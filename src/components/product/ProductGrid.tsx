@@ -144,8 +144,8 @@ export default function ProductGrid({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {productsList.map((product) => (
+        <div className="grid grid-cols-2 items-stretch gap-4 md:grid-cols-4">
+          {productsList.map((product, index) => (
             <ProductCard
               key={product.id}
               id={product.id}
@@ -158,6 +158,11 @@ export default function ProductGrid({
               image={product.image}
               stock={product.stock}
               isWeighed={product.isWeighed === true}
+              unit={product.unit}
+              unitEn={product.unitEn}
+              unitZh={product.unitZh}
+              packages={product.packages}
+              priority={index < 4}
             />
           ))}
         </div>

@@ -1,4 +1,4 @@
-import type { Brand, Product } from "@/types";
+import type { Brand, Product, ProductPackage } from "@/types";
 import { optionalLocalizedName } from "@/utils/localizedName";
 
 function toNumber(value: unknown) {
@@ -49,6 +49,36 @@ function toBrand(value: unknown): Brand | null {
   };
 }
 
+function toPackages(value: unknown): ProductPackage[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+
+    const record = item as Record<string, unknown>;
+    const itemsCount = toNumber(record.itemsCount);
+    const name = record.name;
+
+    if (typeof name !== "string" || name.trim() === "" || itemsCount === null || itemsCount < 1) {
+      return [];
+    }
+
+    return [
+      {
+        id: typeof record.id === "string" ? record.id : name,
+        name: name.trim(),
+        nameEn: optionalLocalizedName(record.nameEn),
+        nameZh: optionalLocalizedName(record.nameZh),
+        itemsCount,
+      },
+    ];
+  });
+}
+
 function toProducts(data: unknown): Product[] | null {
   if (!Array.isArray(data)) {
     return null;
@@ -87,6 +117,17 @@ function toProducts(data: unknown): Product[] | null {
       image: typeof record.image === "string" && record.image.trim() !== "" ? record.image : undefined,
       stock: stock === null ? undefined : stock,
       isWeighed: record.isWeighed === true,
+      unit:
+        typeof record.unit === "string" && record.unit.trim() !== "" ? record.unit.trim() : undefined,
+      unitEn:
+        typeof record.unitEn === "string" && record.unitEn.trim() !== ""
+          ? record.unitEn.trim()
+          : undefined,
+      unitZh:
+        typeof record.unitZh === "string" && record.unitZh.trim() !== ""
+          ? record.unitZh.trim()
+          : undefined,
+      packages: toPackages(record.packages),
       brand: toBrand(record.brand),
     });
   }

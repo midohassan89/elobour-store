@@ -95,6 +95,7 @@ model Product {
   saleLines           SaleLine[]
   openingBalanceItems OpeningBalanceItem[]
   orderItems          OrderItem[]
+  packages            ProductPackage[]
 
   @@index([barcode])
   @@index([sku])
@@ -104,6 +105,23 @@ model Product {
   @@index([linkedProductId])
   @@index([categoryId])
   @@index([brandId])
+}
+
+/// Alternate sellable package for a base product. Name and pack size come from the ERP.
+model ProductPackage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  barcode   String  @unique
+  name      String
+  nameEn    String?
+  nameZh    String?
+  /** How many base units this package contains. */
+  packSize  Int
+  price     Float?
+  isFavorite Boolean @default(false)
+
+  @@index([productId])
 }
 
 model Supplier {

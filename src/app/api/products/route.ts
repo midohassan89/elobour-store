@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,31 @@ export async function GET(request: NextRequest) {
       prisma.product.count({ where }),
     ]);
 
+    const productIds = rows.map((product) => product.id);
+    const packageRows = productIds.length
+      ? await prisma.$queryRaw<
+          Array<{
+            id: string;
+            productId: string;
+            name: string;
+            nameEn: string | null;
+            nameZh: string | null;
+            packSize: number;
+          }>
+        >(Prisma.sql`
+          SELECT id, productId, name, nameEn, nameZh, packSize
+          FROM ProductPackage
+          WHERE productId IN (${Prisma.join(productIds)})
+        `)
+      : [];
+    const packagesByProduct = new Map<string, typeof packageRows>();
+
+    for (const row of packageRows) {
+      const current = packagesByProduct.get(row.productId) ?? [];
+      current.push(row);
+      packagesByProduct.set(row.productId, current);
+    }
+
     const products = rows.map((product) => ({
       id: product.id,
       name: product.name,
@@ -52,6 +78,24 @@ export async function GET(request: NextRequest) {
       stock: product.stockQuantity,
       stockStatus: product.stockStatus,
       isWeighed: product.isWeighed === true,
+      packages: (packagesByProduct.get(product.id) ?? []).flatMap((pkg) => {
+        const itemsCount = Math.floor(Number(pkg.packSize));
+        const name = pkg.name.trim();
+
+        if (!name || !Number.isFinite(itemsCount) || itemsCount < 1) {
+          return [];
+        }
+
+        return [
+          {
+            id: pkg.id,
+            name,
+            nameEn: pkg.nameEn,
+            nameZh: pkg.nameZh,
+            itemsCount,
+          },
+        ];
+      }),
       brand: product.brand
         ? {
             id: product.brand.id,

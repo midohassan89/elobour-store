@@ -92,6 +92,8 @@ export type Dictionary = {
   orderInvalid: string;
   orderFailed: string;
   currency: string;
+  unitPiece: string;
+  piecePriceHint: string;
   exclusiveOffers: string;
   weeklyOffersTitle: string;
   heroSubtitle: string;

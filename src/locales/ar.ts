@@ -82,6 +82,8 @@ const ar: Dictionary = {
   orderInvalid: "بيانات الطلب غير مكتملة.",
   orderFailed: "تعذر إرسال الطلب. حاول مرة أخرى.",
   currency: "EGP",
+  unitPiece: "قطعة",
+  piecePriceHint: "(سعر {{unit}}: {{price}} {{currency}})",
   exclusiveOffers: "عروض حصرية",
   weeklyOffersTitle: "أضخم عروض الأسبوع بانتظارك",
   heroSubtitle: "تسوق الآن جميع احتياجاتك من البقالة الطازجة والمنتجات المستوردة بأفضل الأسعار.",

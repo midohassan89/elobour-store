@@ -82,6 +82,8 @@ const en: Dictionary = {
   orderInvalid: "The order details are incomplete.",
   orderFailed: "The order could not be sent. Please try again.",
   currency: "EGP",
+  unitPiece: "Piece",
+  piecePriceHint: "({{unit}} price: {{price}} {{currency}})",
   exclusiveOffers: "Exclusive offers",
   weeklyOffersTitle: "This week's biggest deals await you",
   heroSubtitle: "Shop fresh groceries and imported products now at the best prices.",

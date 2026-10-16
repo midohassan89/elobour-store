@@ -6,6 +6,14 @@ export interface Brand {
   image?: string;
 }
 
+export interface ProductPackage {
+  id: string;
+  name: string;
+  nameEn?: string;
+  nameZh?: string;
+  itemsCount: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -16,6 +24,11 @@ export interface Product {
   image?: string;
   stock?: number;
   isWeighed?: boolean;
+  /** Base selling unit from the catalog, when the product has one. */
+  unit?: string;
+  unitEn?: string;
+  unitZh?: string;
+  packages?: ProductPackage[];
   brand?: Brand | null;
 }
 
