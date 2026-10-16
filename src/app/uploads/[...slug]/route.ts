@@ -5,12 +5,13 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 const mimeTypes: Record<string, string> = {
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
   ".webp": "image/webp",
   ".png": "image/png",
-  ".gif": "image/gif",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
   ".avif": "image/avif",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
 };
 
 function decodeSegment(segment: string) {
@@ -23,24 +24,23 @@ function decodeSegment(segment: string) {
 
 function resolveUploadFile(slug: string[]) {
   const decodedSlug = slug.map(decodeSegment);
-  const roots = [
-    path.join(process.cwd(), "public", "uploads"),
-    path.join(process.cwd(), "..", "ERP", "public", "uploads"),
+
+  if (decodedSlug.some((segment) => segment.includes(".."))) {
+    return null;
+  }
+
+  const candidates = [
+    path.join(process.cwd(), "public", "uploads", ...decodedSlug),
+    path.resolve(process.cwd(), "..", "egychina-erp", "public", "uploads", ...decodedSlug),
   ];
 
-  for (const uploadsDir of roots) {
-    const resolvedUploadsDir = path.resolve(uploadsDir);
-    const resolvedPath = path.resolve(path.join(uploadsDir, ...decodedSlug));
-
-    if (
-      resolvedPath !== resolvedUploadsDir &&
-      !resolvedPath.startsWith(`${resolvedUploadsDir}${path.sep}`)
-    ) {
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return candidate;
+      }
+    } catch {
       continue;
-    }
-
-    if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
-      return resolvedPath;
     }
   }
 
