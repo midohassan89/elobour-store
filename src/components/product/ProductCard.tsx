@@ -12,6 +12,7 @@ import SafeImage from "@/components/ui/SafeImage";
 import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import { ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 function shortPackageLabel(productName: string, packageName: string, itemsCount: number) {
   const name = packageName.trim();
@@ -311,12 +312,13 @@ export default function ProductCard({
       <button
         type="button"
         disabled={isOutOfStock}
-        onClick={() =>
+        onClick={() => {
           addItem(
             { id, name, nameEn, nameZh, price: displayPrice, isWeighed, image },
             isWeighed ? quantity : 1,
-          )
-        }
+          );
+          toast.success(t("addedToCart"));
+        }}
         className={`w-full rounded-full px-3 py-2.5 text-sm font-bold text-white ${
           isOutOfStock
             ? "cursor-not-allowed bg-gray-400"

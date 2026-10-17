@@ -20,6 +20,7 @@ const ar: Dictionary = {
   searchPrompt: "اكتب اسم المنتج في البحث ثم اضغط إدخال.",
   add: "أضف",
   addToCart: "أضف إلى السلة",
+  addedToCart: "تمت الإضافة إلى السلة بنجاح",
   outOfStock: "نفذت الكمية",
   productImage: "صورة المنتج",
   categories: "الأقسام",

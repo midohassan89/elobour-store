@@ -2,7 +2,7 @@
 
 import { Menu, ShoppingCart, User, X } from "lucide-react";
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import LoginModal from "@/components/auth/LoginModal";
 import LoyaltyCardModal from "@/components/loyalty/LoyaltyCardModal";
 import { useI18n } from "@/components/i18n/LanguageProvider";
@@ -29,6 +29,19 @@ export default function Navbar() {
   const itemCount = useCartStore((state) =>
     state.items.reduce((count, item) => count + item.quantity, 0),
   );
+  const previousItemCount = useRef(itemCount);
+  const [cartPop, setCartPop] = useState(false);
+
+  useEffect(() => {
+    if (itemCount > previousItemCount.current) {
+      setCartPop(true);
+      const timeoutId = window.setTimeout(() => setCartPop(false), 700);
+      previousItemCount.current = itemCount;
+      return () => window.clearTimeout(timeoutId);
+    }
+
+    previousItemCount.current = itemCount;
+  }, [itemCount]);
   const closeCart = useCallback(() => setCartOpen(false), []);
   const closeLogin = useCallback(() => setLoginOpen(false), []);
   const closeCard = useCallback(() => setCardOpen(false), []);
@@ -187,7 +200,11 @@ export default function Navbar() {
             className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-stone-200 text-stone-800 transition hover:border-primary hover:text-primary"
           >
             <ShoppingCart className="h-6 w-6" />
-            <span className="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-white">
+            <span
+              className={`absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-white ${
+                cartPop ? "animate-bounce" : ""
+              }`}
+            >
               {Number.isInteger(itemCount) ? itemCount : Math.round(itemCount * 100) / 100}
             </span>
           </button>

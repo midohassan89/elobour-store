@@ -30,6 +30,7 @@ export type Dictionary = {
   searchPrompt: string;
   add: string;
   addToCart: string;
+  addedToCart: string;
   outOfStock: string;
   productImage: string;
   categories: string;

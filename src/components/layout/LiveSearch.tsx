@@ -7,6 +7,7 @@ import { getLocalizedName, optionalLocalizedName } from "@/utils/localizedName";
 import { resolveProductImage } from "@/utils/productImage";
 import { Search } from "lucide-react";
 import Image from "next/image";
+import toast from "react-hot-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
@@ -257,7 +258,7 @@ export default function LiveSearch() {
                     <button
                       type="button"
                       disabled={isOutOfStock}
-                      onClick={() =>
+                      onClick={() => {
                         addItem({
                           id: product.id,
                           name: product.name,
@@ -266,8 +267,9 @@ export default function LiveSearch() {
                           price: hasSale ? salePrice : product.price,
                           isWeighed: product.isWeighed === true,
                           image: product.image,
-                        })
-                      }
+                        });
+                        toast.success(t("addedToCart"));
+                      }}
                       className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-primary-500 disabled:cursor-not-allowed disabled:bg-gray-400"
                     >
                       {isOutOfStock ? t("outOfStock") : t("add")}

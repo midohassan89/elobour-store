@@ -20,6 +20,7 @@ const en: Dictionary = {
   searchPrompt: "Type a product name, then press Enter.",
   add: "Add",
   addToCart: "Add to Cart",
+  addedToCart: "Added to cart",
   outOfStock: "Out of stock",
   productImage: "Product image",
   categories: "Categories",

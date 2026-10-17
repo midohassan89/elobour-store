@@ -4,6 +4,7 @@ import { directionFor, isLanguage, type Language } from "@/locales/types";
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
 import { cookies } from "next/headers";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 const cairo = Cairo({
@@ -37,7 +38,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${cairo.className} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-white text-stone-900">
-        <LanguageProvider initialLanguage={language}>{children}</LanguageProvider>
+        <LanguageProvider initialLanguage={language}>
+          {children}
+          <Toaster position="bottom-center" />
+        </LanguageProvider>
       </body>
     </html>
   );

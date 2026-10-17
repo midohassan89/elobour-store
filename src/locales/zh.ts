@@ -20,6 +20,7 @@ const zh: Dictionary = {
   searchPrompt: "输入商品名称后按回车。",
   add: "加入",
   addToCart: "加入购物车",
+  addedToCart: "已加入购物车",
   outOfStock: "已售罄",
   productImage: "商品图片",
   categories: "分类",
