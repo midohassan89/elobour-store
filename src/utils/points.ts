@@ -1,5 +1,8 @@
 export const DEFAULT_POINTS_EARN_RATIO = 10;
+/** Points required for a 1 EGP discount. */
 export const DEFAULT_POINTS_REDEEM_VALUE = 1000;
+/** Online redemption starts at this balance and moves in the same steps. */
+export const POINTS_REDEEM_STEP = 10_000;
 export const SHIPPING_FEES = [0, 50, 60, 80] as const;
 
 export type LoyaltyRates = {
@@ -37,6 +40,36 @@ export function discountForPoints(points: number, redeemValue = DEFAULT_POINTS_R
   }
 
   return points / positiveRate(redeemValue, DEFAULT_POINTS_REDEEM_VALUE);
+}
+
+/** Online orders may redeem 0, or 10000, 20000, 30000… points. */
+export function pointsRedeemStepError(points: number) {
+  if (points === 0) {
+    return null;
+  }
+
+  if (!Number.isInteger(points) || points < POINTS_REDEEM_STEP || points % POINTS_REDEEM_STEP !== 0) {
+    return "Points can only be redeemed in multiples of 10000, starting from 10000";
+  }
+
+  return null;
+}
+
+/** Largest 10,000-point step that the balance and remaining goods total allow. */
+export function maxRedeemablePointsStep(
+  pointsBalance: number,
+  goodsTotal: number,
+  redeemValue = DEFAULT_POINTS_REDEEM_VALUE,
+) {
+  if (pointsBalance < POINTS_REDEEM_STEP || goodsTotal <= 0) {
+    return 0;
+  }
+
+  const perEgp = positiveRate(redeemValue, DEFAULT_POINTS_REDEEM_VALUE);
+  const byTotal = Math.floor((goodsTotal * perEgp) / POINTS_REDEEM_STEP) * POINTS_REDEEM_STEP;
+  const byBalance = Math.floor(pointsBalance / POINTS_REDEEM_STEP) * POINTS_REDEEM_STEP;
+
+  return Math.max(0, Math.min(byTotal, byBalance));
 }
 
 export function maxRedeemablePoints(

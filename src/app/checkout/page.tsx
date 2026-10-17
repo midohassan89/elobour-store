@@ -17,7 +17,8 @@ import { formatQuantity } from "@/utils/quantity";
 import {
   discountForPoints,
   formatPointsAmount,
-  maxRedeemablePoints,
+  maxRedeemablePointsStep,
+  POINTS_REDEEM_STEP,
 } from "@/utils/points";
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -29,6 +30,15 @@ type DeliveryZone = {
   nameEn: string;
   nameZh: string;
   deliveryFee: number;
+  minOrder: number;
+  estimatedTime: string | null;
+};
+
+type AppliedCoupon = {
+  code: string;
+  discountType: string;
+  discountValue: number;
+  discountAmount: number;
 };
 
 type SavedAddress = {
@@ -65,10 +75,12 @@ function readZone(value: unknown): DeliveryZone | null {
 
   return {
     id: record.id,
-    nameAr: text(record.nameAr),
+    nameAr: text(record.nameAr) || text(record.name),
     nameEn: text(record.nameEn),
     nameZh: text(record.nameZh),
-    deliveryFee: Number(record.deliveryFee) || 0,
+    deliveryFee: Number(record.deliveryFee ?? record.fee) || 0,
+    minOrder: Number(record.minOrder) || 0,
+    estimatedTime: text(record.estimatedTime) || null,
   };
 }
 
@@ -118,8 +130,12 @@ export default function CheckoutPage() {
   const authReady = useAuthStore((state) => state.ready);
   const hydrate = useAuthStore((state) => state.hydrate);
   const [submitted, setSubmitted] = useState(false);
-  const [redeemEnabled, setRedeemEnabled] = useState(false);
-  const [pointsInput, setPointsInput] = useState("0");
+  const [deliveryMode, setDeliveryMode] = useState<"asap" | "schedule">("asap");
+  const [pointsToRedeem, setPointsToRedeem] = useState(0);
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponMessage, setCouponMessage] = useState<string | null>(null);
+  const [couponPending, setCouponPending] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
@@ -141,13 +157,15 @@ export default function CheckoutPage() {
   const selectedZone = deliveryZones.find((zone) => zone.id === selectedZoneId) ?? null;
   const selectedSaved = savedAddresses.find((address) => address.id === addressChoice) ?? null;
   const shippingFee = selectedZone?.deliveryFee ?? selectedSaved?.zone?.deliveryFee ?? 0;
-  const maxRedeemable = user
-    ? maxRedeemablePoints(user.pointsBalance ?? 0, totalPrice, redeemValue)
+  const couponDiscount = appliedCoupon?.discountAmount ?? 0;
+  const goodsAfterCoupon = Math.max(0, totalPrice - couponDiscount);
+  const maxStepPoints = user
+    ? maxRedeemablePointsStep(user.pointsBalance ?? 0, goodsAfterCoupon, redeemValue)
     : 0;
-  const requestedPoints = redeemEnabled ? Math.floor(Number(pointsInput) || 0) : 0;
-  const pointsRedeemed = Math.min(Math.max(0, requestedPoints), maxRedeemable);
+  const pointsRedeemed = Math.min(Math.max(0, pointsToRedeem), maxStepPoints);
   const pointsDiscount = discountForPoints(pointsRedeemed, redeemValue);
-  const merchandiseDue = Math.max(0, totalPrice - pointsDiscount);
+  const merchandiseDue = Math.max(0, goodsAfterCoupon - pointsDiscount);
+  const belowMinOrder = Boolean(selectedZone && selectedZone.minOrder > 0 && totalPrice + 0.001 < selectedZone.minOrder);
   const finalTotal = merchandiseDue + shippingFee;
   const earnedPoints = Math.floor(merchandiseDue * earnRatio);
   const resolvedAddressTitle = showNewAddressForm ? draft.title.trim() : text(selectedSaved?.title);
@@ -156,7 +174,9 @@ export default function CheckoutPage() {
   const activePhone = showNewAddressForm ? draft.phoneNumber.trim() : text(selectedSaved?.phoneNumber);
   const activeStreet = showNewAddressForm ? draft.street.trim() : text(selectedSaved?.street);
   const activeCity = showNewAddressForm ? DEFAULT_ADDRESS_CITY : text(selectedSaved?.city) || DEFAULT_ADDRESS_CITY;
-  const addressReady = Boolean(deliveryTime && activeRecipient && activePhone && activeStreet && activeCity && selectedZone) &&
+  const deliveryReady = deliveryMode === "asap" || isDeliveryTimeAllowed(deliveryTime);
+  const addressReady =
+    Boolean(deliveryReady && activeRecipient && activePhone && activeStreet && activeCity && selectedZone && !belowMinOrder) &&
     (showNewAddressForm ? Boolean(resolvedAddressTitle) : Boolean(selectedSaved));
 
   function deliveryFeeLabel(fee: number) {
@@ -170,6 +190,50 @@ export default function CheckoutPage() {
   useEffect(() => {
     console.log("Current Ratio in UI:", earnRatio);
   }, [earnRatio]);
+
+  useEffect(() => {
+    setPointsToRedeem((current) => (current > maxStepPoints ? maxStepPoints : current));
+  }, [maxStepPoints]);
+
+  useEffect(() => {
+    const code = appliedCoupon?.code;
+
+    if (!code) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    fetch("/api/coupons/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, subtotal: totalPrice }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = (await response.json().catch(() => null)) as AppliedCoupon & { valid?: boolean } | null;
+
+        if (!response.ok || !payload?.valid) {
+          setAppliedCoupon(null);
+          setCouponMessage(t("couponInvalid"));
+          return;
+        }
+
+        setAppliedCoupon({
+          code: payload.code,
+          discountType: payload.discountType,
+          discountValue: payload.discountValue,
+          discountAmount: payload.discountAmount,
+        });
+      })
+      .catch((fetchError: unknown) => {
+        if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
+          return;
+        }
+      });
+
+    return () => controller.abort();
+  }, [appliedCoupon?.code, totalPrice, t]);
 
   useEffect(() => {
     if (!authReady) {
@@ -410,6 +474,45 @@ export default function CheckoutPage() {
     }
   }
 
+  async function applyCoupon() {
+    const code = couponInput.trim();
+
+    if (!code || couponPending) {
+      return;
+    }
+
+    setCouponPending(true);
+    setCouponMessage(null);
+
+    try {
+      const response = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal: totalPrice }),
+      });
+      const payload = (await response.json().catch(() => null)) as (AppliedCoupon & { valid?: boolean }) | null;
+
+      if (!response.ok || !payload?.valid) {
+        setAppliedCoupon(null);
+        setCouponMessage(t("couponInvalid"));
+        return;
+      }
+
+      setAppliedCoupon({
+        code: payload.code,
+        discountType: payload.discountType,
+        discountValue: payload.discountValue,
+        discountAmount: payload.discountAmount,
+      });
+      setCouponInput(payload.code);
+      setCouponMessage(t("couponApplied"));
+    } catch {
+      setCouponMessage(t("couponInvalid"));
+    } finally {
+      setCouponPending(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -429,14 +532,14 @@ export default function CheckoutPage() {
       !phone ||
       !addressDetails ||
       !addressCity ||
-      Number.isNaN(scheduledAt.getTime()) ||
+      (deliveryMode === "schedule" && Number.isNaN(scheduledAt.getTime())) ||
       (showNewAddressForm && !resolvedAddressTitle)
     ) {
-      setError(t("addressRequired"));
+      setError(belowMinOrder ? t("minOrderNotMet", { amount: formatPointsAmount(selectedZone?.minOrder ?? 0) }) : t("addressRequired"));
       return;
     }
 
-    if (!isDeliveryTimeAllowed(scheduledAt)) {
+    if (deliveryMode === "schedule" && !isDeliveryTimeAllowed(scheduledAt)) {
       setDeliveryTime(nextValidDeliveryTime());
       setError(t("deliveryTimeTooSoon"));
       return;
@@ -457,9 +560,10 @@ export default function CheckoutPage() {
           zoneId: selectedZone.id,
           deliveryFee: selectedZone.deliveryFee,
           shippingFee: selectedZone.deliveryFee,
-          deliveryTime: scheduledAt.toISOString(),
+          deliveryTime: deliveryMode === "asap" ? "ASAP" : scheduledAt.toISOString(),
           totalAmount: finalTotal,
           pointsRedeemed,
+          couponCode: appliedCoupon?.code ?? "",
           saveAddress: showNewAddressForm,
           addressTitle: resolvedAddressTitle,
           street: addressDetails,
@@ -480,10 +584,16 @@ export default function CheckoutPage() {
             ? t("orderUnauthorized")
             : errorCode.toLowerCase().includes("not found")
               ? t("orderUnavailable")
-              : errorCode === "invalid" || response.status === 400
-                ? errorCode.toLowerCase().includes("points")
-                  ? t("orderPoints")
-                  : t("orderInvalid")
+              : errorCode === "delivery_time"
+                ? t("deliveryTimeTooSoon")
+                : errorCode === "min_order"
+                  ? t("orderMin")
+                  : errorCode === "coupon"
+                    ? t("orderCoupon")
+                    : errorCode === "invalid" || response.status === 400
+                      ? errorCode.toLowerCase().includes("points")
+                        ? t("orderPoints")
+                        : t("orderInvalid")
                 : errorCode.toLowerCase().includes("points")
                   ? t("orderPoints")
                   : t("orderFailed"),
@@ -636,60 +746,140 @@ export default function CheckoutPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                 <hr className="my-8 border-gray-200 dark:border-gray-800" />
                 <div>
-                  <label htmlFor="delivery-time" className="mb-2 block text-sm font-bold">
-                    {t("deliveryTime")}
-                  </label>
-                  <DeliveryTimePicker
-                    id="delivery-time"
-                    selected={deliveryTime}
-                    onChange={setDeliveryTime}
-                    locale={language}
-                  />
-                  <p className="mt-2 text-sm text-stone-500 dark:text-gray-400">{t("deliveryTimeHint")}</p>
+                  <p className="mb-2 block text-sm font-bold text-stone-900 dark:text-gray-100">{t("deliveryTime")}</p>
+                  {selectedZone?.estimatedTime ? (
+                    <p className="mb-3 text-sm font-bold text-stone-600 dark:text-gray-300">
+                      {t("estimatedArrival", { time: selectedZone.estimatedTime })}
+                    </p>
+                  ) : null}
+                  {belowMinOrder && selectedZone ? (
+                    <p role="alert" className="mb-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+                      {t("minOrderNotMet", { amount: formatPointsAmount(selectedZone.minOrder) })}
+                    </p>
+                  ) : null}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      aria-pressed={deliveryMode === "asap"}
+                      onClick={() => setDeliveryMode("asap")}
+                      className={`rounded-2xl border px-4 py-3 text-start text-sm font-extrabold transition ${
+                        deliveryMode === "asap"
+                          ? "border-primary bg-primary-50 text-primary-900 ring-2 ring-primary/20"
+                          : "border-stone-200 bg-white text-stone-800 hover:border-primary dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
+                      }`}
+                    >
+                      {t("deliverAsap")}
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={deliveryMode === "schedule"}
+                      onClick={() => setDeliveryMode("schedule")}
+                      className={`rounded-2xl border px-4 py-3 text-start text-sm font-extrabold transition ${
+                        deliveryMode === "schedule"
+                          ? "border-primary bg-primary-50 text-primary-900 ring-2 ring-primary/20"
+                          : "border-stone-200 bg-white text-stone-800 hover:border-primary dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
+                      }`}
+                    >
+                      {t("scheduleDelivery")}
+                    </button>
+                  </div>
+                  {deliveryMode === "schedule" ? (
+                    <div className="mt-3">
+                      <DeliveryTimePicker
+                        id="delivery-time"
+                        selected={deliveryTime}
+                        onChange={setDeliveryTime}
+                        locale={language}
+                      />
+                      <p className="mt-2 text-sm text-stone-500 dark:text-gray-400">{t("deliveryTimeHint")}</p>
+                    </div>
+                  ) : null}
                 </div>
 
-                {authReady && user && Number(user.pointsBalance) > 0 ? (
+                {authReady && user ? (
                   <fieldset className="rounded-3xl border border-primary-200 bg-primary-50 p-4 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
                     <legend className="px-1 text-sm font-extrabold text-primary-900 dark:text-gray-200">
                       {t("redeemPoints")}
                     </legend>
-                    <p className="text-sm font-semibold leading-7 text-primary-900 dark:text-gray-200">
-                      {t("pointsWorth", {
-                        points: user?.pointsBalance ?? 0,
-                        amount: formatPointsAmount(discountForPoints(user?.pointsBalance ?? 0, redeemValue)),
-                      })}
-                    </p>
-                    <label className="mt-3 flex items-center gap-2 text-sm font-bold text-stone-800 dark:text-gray-200">
-                      <input
-                        type="checkbox"
-                        checked={redeemEnabled}
-                        onChange={(event) => {
-                          const enabled = event.target.checked;
-                          setRedeemEnabled(enabled);
-                          if (enabled) {
-                            setPointsInput(String(maxRedeemable));
-                          }
-                        }}
-                        className="h-4 w-4 accent-primary"
-                      />
-                      {t("redeemPoints")}
-                    </label>
-                    {redeemEnabled ? (
-                      <input
-                        type="number"
-                        min={0}
-                        max={maxRedeemable}
-                        step={1}
-                        value={pointsInput}
-                        onChange={(event) => {
-                          const next = Math.floor(Number(event.target.value) || 0);
-                          setPointsInput(String(Math.min(Math.max(0, next), maxRedeemable)));
-                        }}
-                        className={`${fieldClassName} mt-3`}
-                      />
-                    ) : null}
+                    {(user.pointsBalance ?? 0) < POINTS_REDEEM_STEP ? (
+                      <p className="text-sm font-semibold leading-7 text-primary-900 dark:text-gray-200">
+                        {t("pointsRedeemStarts", { points: user.pointsBalance ?? 0 })}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold leading-7 text-primary-900 dark:text-gray-200">
+                          {t("pointsRedeemChoice", {
+                            points: pointsRedeemed,
+                            amount: formatPointsAmount(pointsDiscount),
+                          })}
+                        </p>
+                        <div className="mt-3 flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setPointsToRedeem((current) => Math.max(0, current - POINTS_REDEEM_STEP))}
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-300 bg-white text-lg font-extrabold text-stone-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                          >
+                            −
+                          </button>
+                          <span className="min-w-24 text-center text-base font-extrabold text-stone-950 dark:text-gray-100">
+                            {pointsRedeemed.toLocaleString()}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPointsToRedeem((current) => Math.min(maxStepPoints, current + POINTS_REDEEM_STEP))
+                            }
+                            disabled={pointsRedeemed >= maxStepPoints}
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-300 bg-white text-lg font-extrabold text-stone-800 disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </fieldset>
                 ) : null}
+
+                <div>
+                  <label htmlFor="coupon-code" className="mb-2 block text-sm font-bold text-stone-900 dark:text-gray-100">
+                    {t("couponLabel")}
+                  </label>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <input
+                      id="coupon-code"
+                      value={couponInput}
+                      onChange={(event) => setCouponInput(event.target.value)}
+                      className={fieldClassName}
+                      autoCapitalize="characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void applyCoupon()}
+                      disabled={couponPending || couponInput.trim() === ""}
+                      className="rounded-full bg-primary px-6 py-3 text-sm font-extrabold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+                    >
+                      {couponPending ? t("applyingCoupon") : t("applyCoupon")}
+                    </button>
+                    {appliedCoupon ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAppliedCoupon(null);
+                          setCouponMessage(null);
+                          setCouponInput("");
+                        }}
+                        className="rounded-full border border-stone-300 px-6 py-3 text-sm font-extrabold text-stone-600 dark:border-gray-700 dark:text-gray-300"
+                      >
+                        {t("removeCoupon")}
+                      </button>
+                    ) : null}
+                  </div>
+                  {couponMessage ? (
+                    <p className={`mt-2 text-sm font-bold ${appliedCoupon ? "text-emerald-700 dark:text-emerald-400" : "text-red-600"}`}>
+                      {couponMessage}
+                    </p>
+                  ) : null}
+                </div>
 
                 {error ? (
                   <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
@@ -699,7 +889,7 @@ export default function CheckoutPage() {
 
                 <button
                   type="submit"
-                  disabled={items.length === 0 || pending || !addressReady}
+                  disabled={items.length === 0 || pending || !addressReady || belowMinOrder}
                   className="w-full rounded-full border-none bg-primary py-3.5 text-base font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
                 >
                   {pending ? t("submittingOrder") : t("confirmOrder")}
@@ -739,6 +929,14 @@ export default function CheckoutPage() {
                       {totalPrice} {t("currency")}
                     </dd>
                   </div>
+                  {couponDiscount > 0 ? (
+                    <div className="flex items-center justify-between text-primary-800 dark:text-gray-200">
+                      <dt>{t("couponDiscount")}</dt>
+                      <dd className="font-bold">
+                        -{formatPointsAmount(couponDiscount)} {t("currency")}
+                      </dd>
+                    </div>
+                  ) : null}
                   {pointsDiscount > 0 ? (
                     <div className="flex items-center justify-between text-primary-800 dark:text-gray-200">
                       <dt>{t("pointsDiscount")}</dt>

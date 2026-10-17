@@ -1,10 +1,11 @@
 import { findCustomerById } from "@/lib/customers";
+import { findCouponByCode, quoteCoupon } from "@/lib/coupons";
 import { prisma } from "@/lib/prisma";
 import { readSessionToken, sessionCookieName } from "@/lib/session";
 import { getLoyaltySettings } from "@/lib/loyalty";
 import { findActiveDeliveryZone } from "@/lib/deliveryZones";
 import { createCustomerAddress } from "@/lib/accountData";
-import { discountForPoints, pointsForAmount } from "@/utils/points";
+import { discountForPoints, pointsForAmount, pointsRedeemStepError } from "@/utils/points";
 import { normalizeOrderQuantity } from "@/utils/quantity";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -34,6 +35,7 @@ type CheckoutBody = {
   street?: unknown;
   city?: unknown;
   pointsRedeemed?: unknown;
+  couponCode?: unknown;
   items?: unknown;
 };
 
@@ -56,10 +58,14 @@ export async function POST(request: Request) {
     const phone = phoneNumber;
     const address = String(body.address ?? "").trim();
     const deliveryTimeRaw = String(body.deliveryTime ?? "").trim();
+    const isAsap = deliveryTimeRaw.toUpperCase() === "ASAP";
     const deliveryDate = new Date(deliveryTimeRaw);
-    const deliveryTime = Number.isNaN(deliveryDate.getTime()) ? "" : deliveryDate.toISOString();
+    const deliveryTime = isAsap || Number.isNaN(deliveryDate.getTime()) ? "" : deliveryDate.toISOString();
     const extraNotes = body.notes == null || String(body.notes).trim() === "" ? "" : String(body.notes).trim();
-    const notes = [extraNotes, deliveryTime ? `deliveryTime: ${deliveryTime}` : ""].filter(Boolean).join("\n") || null;
+    const notes =
+      [extraNotes, isAsap ? "deliveryTime: ASAP" : deliveryTime ? `deliveryTime: ${deliveryTime}` : ""]
+        .filter(Boolean)
+        .join("\n") || null;
     const totalAmount = Number(body.totalAmount);
     const zoneId = String(body.zoneId ?? "").trim();
     const items = Array.isArray(body.items) ? body.items : [];
@@ -116,25 +122,49 @@ export async function POST(request: Request) {
       !customerName ||
       !phone ||
       !address ||
-      !deliveryTime ||
+      (!isAsap && !deliveryTime) ||
       normalizedItems.length !== items.length ||
       items.length === 0
     ) {
       return NextResponse.json({ error: "invalid" }, { status: 400 });
     }
 
+    if (!isAsap && deliveryDate.getTime() < Date.now() + 60 * 60 * 1000) {
+      return NextResponse.json({ error: "delivery_time" }, { status: 400 });
+    }
+
     const subtotal = normalizedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const loyalty = await getLoyaltySettings();
     const pointsRedeemed = isGuest ? 0 : wholePoints(Number(body.pointsRedeemed ?? 0));
-    const discount = isGuest ? 0 : discountForPoints(pointsRedeemed, loyalty.redeemValue);
-    const pointsEarned = isGuest
-      ? 0
-      : wholePoints(pointsForAmount(subtotal - discount, loyalty.earnRatio));
+    const couponCode = String(body.couponCode ?? "").trim().toUpperCase();
+    const coupon = couponCode ? await findCouponByCode(couponCode) : null;
+    const quotedCoupon = couponCode ? quoteCoupon(coupon, subtotal) : null;
+
+    if (quotedCoupon && !quotedCoupon.ok) {
+      return NextResponse.json({ error: "coupon" }, { status: 400 });
+    }
+
+    const couponDiscount = quotedCoupon?.ok ? quotedCoupon.quote.discountAmount : 0;
+    const goodsAfterCoupon = Math.max(0, subtotal - couponDiscount);
+
+    if (pointsRedeemStepError(pointsRedeemed)) {
+      return NextResponse.json({ error: "points" }, { status: 400 });
+    }
+
+    const pointsDiscount = isGuest ? 0 : discountForPoints(pointsRedeemed, loyalty.redeemValue);
+    const pointsEarned = isGuest ? 0 : wholePoints(pointsForAmount(goodsAfterCoupon - pointsDiscount, loyalty.earnRatio));
+
     if (
       !isGuest &&
-      (!customer || pointsRedeemed > customer.pointsBalance || discount - subtotal > 0.001)
+      (!customer ||
+        pointsRedeemed > customer.pointsBalance ||
+        pointsDiscount - goodsAfterCoupon > 0.001)
     ) {
       return NextResponse.json({ error: "points" }, { status: 400 });
+    }
+
+    if (zone && subtotal + 0.001 < zone.minOrder) {
+      return NextResponse.json({ error: "min_order" }, { status: 400 });
     }
 
     if (
@@ -142,7 +172,7 @@ export async function POST(request: Request) {
       !Number.isFinite(requestedFee) ||
       Math.abs(requestedFee - shippingFee) > 0.02 ||
       !Number.isFinite(totalAmount) ||
-      Math.abs(subtotal - discount + shippingFee - totalAmount) > 0.02
+      Math.abs(goodsAfterCoupon - pointsDiscount + shippingFee - totalAmount) > 0.02
     ) {
       return NextResponse.json({ error: "invalid" }, { status: 400 });
     }
@@ -242,10 +272,48 @@ export async function POST(request: Request) {
             },
           });
         }
+
+        if (quotedCoupon?.ok) {
+          const fresh = await findCouponByCode(quotedCoupon.quote.code, tx);
+          const again = quoteCoupon(fresh, subtotal);
+
+          if (!again.ok || Math.abs(again.quote.discountAmount - couponDiscount) > 0.001) {
+            throw new Error("coupon");
+          }
+
+          const bumped = await tx.$executeRaw`
+            UPDATE Coupon
+            SET usedCount = usedCount + 1
+            WHERE id = ${again.quote.id}
+              AND isActive = 1
+              AND usedCount = ${fresh?.usedCount ?? -1}
+              AND (usageLimit IS NULL OR usedCount < usageLimit)
+          `;
+
+          if (Number(bumped) !== 1) {
+            throw new Error("coupon");
+          }
+        }
+
+        await tx.$executeRaw`
+          UPDATE "Order"
+          SET
+            deliveryTime = ${isAsap ? null : deliveryTime},
+            pointsDiscount = ${pointsDiscount},
+            couponCode = ${couponCode || null},
+            couponDiscount = ${couponDiscount},
+            deliveryZoneId = ${zone.id},
+            shippingFee = ${shippingFee}
+          WHERE id = ${order.id}
+        `;
       });
     } catch (error) {
       console.error("CHECKOUT DB ERROR:", error);
       const message = error instanceof Error ? error.message : "Could not create order";
+
+      if (message === "coupon") {
+        return NextResponse.json({ error: "coupon" }, { status: 400 });
+      }
 
       if (message === "Customer not found" || message === "Insufficient points") {
         return NextResponse.json(

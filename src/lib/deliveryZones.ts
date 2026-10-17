@@ -6,6 +6,8 @@ export type DeliveryZone = {
   nameEn: string;
   nameZh: string;
   deliveryFee: number;
+  minOrder: number;
+  estimatedTime: string | null;
 };
 
 type ZoneRow = {
@@ -14,6 +16,8 @@ type ZoneRow = {
   nameEn: string | null;
   nameZh: string | null;
   deliveryFee: number;
+  minOrder: number | null;
+  estimatedTime: string | null;
 };
 
 function toZone(row: ZoneRow): DeliveryZone {
@@ -23,12 +27,14 @@ function toZone(row: ZoneRow): DeliveryZone {
     nameEn: row.nameEn ?? "",
     nameZh: row.nameZh ?? "",
     deliveryFee: Number(row.deliveryFee) || 0,
+    minOrder: Number(row.minOrder) || 0,
+    estimatedTime: row.estimatedTime?.trim() || null,
   };
 }
 
 export async function listActiveDeliveryZones(): Promise<DeliveryZone[]> {
   const rows = await prisma.$queryRaw<ZoneRow[]>`
-    SELECT id, nameAr, nameEn, nameZh, deliveryFee
+    SELECT id, nameAr, nameEn, nameZh, deliveryFee, minOrder, estimatedTime
     FROM DeliveryZone
     WHERE isActive = 1
     ORDER BY nameAr ASC
@@ -39,7 +45,7 @@ export async function listActiveDeliveryZones(): Promise<DeliveryZone[]> {
 
 export async function findActiveDeliveryZone(id: string): Promise<DeliveryZone | null> {
   const rows = await prisma.$queryRaw<ZoneRow[]>`
-    SELECT id, nameAr, nameEn, nameZh, deliveryFee
+    SELECT id, nameAr, nameEn, nameZh, deliveryFee, minOrder, estimatedTime
     FROM DeliveryZone
     WHERE id = ${id} AND isActive = 1
     LIMIT 1

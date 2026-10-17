@@ -559,10 +559,54 @@ model Order {
   customer       Customer?   @relation(fields: [customerId], references: [id])
   pointsEarned   Int?
   pointsRedeemed Int?
+  /** EGP taken off the goods subtotal for pointsRedeemed. */
+  pointsDiscount Float       @default(0)
+  couponCode     String?
+  couponDiscount Float       @default(0)
+  deliveryTime   DateTime?
+  deliveryZoneId String?
+  shippingFee    Float       @default(0)
   createdAt      DateTime    @default(now())
   items          OrderItem[]
 
   @@index([customerId])
+  @@index([deliveryZoneId])
+}
+
+/// Configurable delivery area and fee. Shared with the ERP database.
+model DeliveryZone {
+  id            String   @id @default(cuid())
+  nameAr        String
+  nameEn        String   @default("")
+  nameZh        String   @default("")
+  deliveryFee   Float
+  /** Minimum goods subtotal required for this zone. */
+  minOrder      Float    @default(0)
+  /** Shown to the customer, for example "45 - 60 دقيقة". */
+  estimatedTime String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+/// Storefront promo code. `code` is stored uppercase.
+model Coupon {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  /** PERCENTAGE | FIXED */
+  discountType  String    @default("PERCENTAGE")
+  discountValue Float
+  minOrder      Float     @default(0)
+  maxDiscount   Float?
+  usageLimit    Int?
+  usedCount     Int       @default(0)
+  expiresAt     DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  @@index([isActive])
 }
 
 model OrderItem {

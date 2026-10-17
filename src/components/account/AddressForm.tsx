@@ -10,6 +10,7 @@ export type AddressZone = {
   nameEn: string;
   nameZh: string;
   deliveryFee: number;
+  estimatedTime?: string | null;
 };
 
 export type AddressFormValues = {
@@ -280,6 +281,7 @@ export default function AddressForm({
           {zoneOptions.map((zone) => (
             <option key={zone.id} value={zone.id}>
               {zoneLabel(zone, language)}
+              {zone.estimatedTime ? ` · ${zone.estimatedTime}` : ""}
             </option>
           ))}
         </select>
