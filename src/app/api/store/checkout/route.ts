@@ -141,7 +141,13 @@ export async function POST(request: Request) {
     const quotedCoupon = couponCode ? quoteCoupon(coupon, subtotal) : null;
 
     if (quotedCoupon && !quotedCoupon.ok) {
-      return NextResponse.json({ error: "coupon" }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: quotedCoupon.error,
+          ...(quotedCoupon.minOrder != null ? { minOrder: quotedCoupon.minOrder, amount: quotedCoupon.minOrder } : {}),
+        },
+        { status: 400 },
+      );
     }
 
     const couponDiscount = quotedCoupon?.ok ? quotedCoupon.quote.discountAmount : 0;
@@ -278,7 +284,7 @@ export async function POST(request: Request) {
           const again = quoteCoupon(fresh, subtotal);
 
           if (!again.ok || Math.abs(again.quote.discountAmount - couponDiscount) > 0.001) {
-            throw new Error("coupon");
+            throw new Error(again.ok ? "INVALID" : again.error);
           }
 
           const bumped = await tx.$executeRaw`
@@ -311,8 +317,8 @@ export async function POST(request: Request) {
       console.error("CHECKOUT DB ERROR:", error);
       const message = error instanceof Error ? error.message : "Could not create order";
 
-      if (message === "coupon") {
-        return NextResponse.json({ error: "coupon" }, { status: 400 });
+      if (message === "coupon" || message === "INVALID" || message === "EXPIRED" || message === "LIMIT_REACHED" || message === "MIN_AMOUNT_NOT_MET") {
+        return NextResponse.json({ error: message === "coupon" ? "INVALID" : message }, { status: 400 });
       }
 
       if (message === "Customer not found" || message === "Insufficient points") {

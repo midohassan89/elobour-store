@@ -21,7 +21,11 @@ export type CouponQuote = {
   discountAmount: number;
 };
 
-export type CouponQuoteResult = { ok: true; quote: CouponQuote } | { ok: false; error: string };
+export type CouponErrorCode = "MIN_AMOUNT_NOT_MET" | "EXPIRED" | "LIMIT_REACHED" | "INVALID";
+
+export type CouponQuoteResult =
+  | { ok: true; quote: CouponQuote }
+  | { ok: false; error: CouponErrorCode; minOrder?: number };
 
 type CouponRow = {
   id: string;
@@ -64,41 +68,37 @@ export async function findCouponByCode(code: string, db: Pick<typeof prisma, "$q
 
 /** Price a coupon against a goods subtotal. Does not increment usedCount. */
 export function quoteCoupon(coupon: CouponRecord | null, subtotal: number, now = new Date()): CouponQuoteResult {
-  if (!coupon) {
-    return { ok: false, error: "Coupon not found" };
-  }
-
-  if (!coupon.isActive) {
-    return { ok: false, error: "Coupon is inactive" };
+  if (!coupon || !coupon.isActive) {
+    return { ok: false, error: "INVALID" };
   }
 
   if (coupon.expiresAt && coupon.expiresAt.getTime() <= now.getTime()) {
-    return { ok: false, error: "Coupon has expired" };
+    return { ok: false, error: "EXPIRED" };
   }
 
   if (coupon.usageLimit != null && coupon.usedCount >= coupon.usageLimit) {
-    return { ok: false, error: "Coupon usage limit reached" };
+    return { ok: false, error: "LIMIT_REACHED" };
   }
 
   if (!Number.isFinite(subtotal) || subtotal < 0) {
-    return { ok: false, error: "subtotal must be 0 or greater" };
+    return { ok: false, error: "INVALID" };
   }
 
   if (subtotal + 0.001 < coupon.minOrder) {
-    return { ok: false, error: "Order is below the coupon minimum" };
+    return { ok: false, error: "MIN_AMOUNT_NOT_MET", minOrder: coupon.minOrder };
   }
 
   const discountType =
     coupon.discountType === "FIXED" ? "FIXED" : coupon.discountType === "PERCENTAGE" ? "PERCENTAGE" : null;
 
   if (!discountType) {
-    return { ok: false, error: "Coupon is invalid" };
+    return { ok: false, error: "INVALID" };
   }
 
   let amount = discountType === "PERCENTAGE" ? subtotal * (coupon.discountValue / 100) : coupon.discountValue;
 
   if (!Number.isFinite(amount) || amount < 0) {
-    return { ok: false, error: "Coupon is invalid" };
+    return { ok: false, error: "INVALID" };
   }
 
   if (coupon.maxDiscount != null && amount > coupon.maxDiscount) {

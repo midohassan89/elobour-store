@@ -136,6 +136,9 @@ export type Dictionary = {
   applyingCoupon: string;
   couponApplied: string;
   couponInvalid: string;
+  couponMinAmount: string;
+  couponExpired: string;
+  couponLimitReached: string;
   couponDiscount: string;
   removeCoupon: string;
   orderMin: string;

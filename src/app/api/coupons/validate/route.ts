@@ -22,7 +22,11 @@ export async function POST(request: Request) {
     const quoted = quoteCoupon(coupon, subtotal);
 
     if (!quoted.ok) {
-      return NextResponse.json({ valid: false, error: quoted.error });
+      return NextResponse.json({
+        valid: false,
+        error: quoted.error,
+        ...(quoted.minOrder != null ? { minOrder: quoted.minOrder, amount: quoted.minOrder } : {}),
+      });
     }
 
     return NextResponse.json({

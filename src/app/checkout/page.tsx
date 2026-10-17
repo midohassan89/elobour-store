@@ -179,6 +179,24 @@ export default function CheckoutPage() {
     Boolean(deliveryReady && activeRecipient && activePhone && activeStreet && activeCity && selectedZone && !belowMinOrder) &&
     (showNewAddressForm ? Boolean(resolvedAddressTitle) : Boolean(selectedSaved));
 
+  function couponFailureMessage(payload: { error?: string; minOrder?: number; amount?: number } | null) {
+    if (payload?.error === "MIN_AMOUNT_NOT_MET") {
+      const amount = Number(payload.amount ?? payload.minOrder);
+
+      return t("couponMinAmount", { amount: formatPointsAmount(Number.isFinite(amount) ? amount : 0) });
+    }
+
+    if (payload?.error === "EXPIRED") {
+      return t("couponExpired");
+    }
+
+    if (payload?.error === "LIMIT_REACHED") {
+      return t("couponLimitReached");
+    }
+
+    return t("couponInvalid");
+  }
+
   function deliveryFeeLabel(fee: number) {
     if (fee === 0) {
       return t("freeDelivery");
@@ -211,11 +229,16 @@ export default function CheckoutPage() {
       signal: controller.signal,
     })
       .then(async (response) => {
-        const payload = (await response.json().catch(() => null)) as AppliedCoupon & { valid?: boolean } | null;
+        const payload = (await response.json().catch(() => null)) as (AppliedCoupon & {
+          valid?: boolean;
+          error?: string;
+          minOrder?: number;
+          amount?: number;
+        }) | null;
 
         if (!response.ok || !payload?.valid) {
           setAppliedCoupon(null);
-          setCouponMessage(t("couponInvalid"));
+          setCouponMessage(couponFailureMessage(payload));
           return;
         }
 
@@ -490,11 +513,16 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, subtotal: totalPrice }),
       });
-      const payload = (await response.json().catch(() => null)) as (AppliedCoupon & { valid?: boolean }) | null;
+      const payload = (await response.json().catch(() => null)) as (AppliedCoupon & {
+        valid?: boolean;
+        error?: string;
+        minOrder?: number;
+        amount?: number;
+      }) | null;
 
       if (!response.ok || !payload?.valid) {
         setAppliedCoupon(null);
-        setCouponMessage(t("couponInvalid"));
+        setCouponMessage(couponFailureMessage(payload));
         return;
       }
 
@@ -575,10 +603,33 @@ export default function CheckoutPage() {
           })),
         }),
       });
-      const result = (await response.json().catch(() => null)) as { error?: unknown } | null;
+      const result = (await response.json().catch(() => null)) as {
+        error?: unknown;
+        minOrder?: unknown;
+        amount?: unknown;
+      } | null;
       const errorCode = typeof result?.error === "string" ? result.error : "";
 
       if (!response.ok) {
+        if (
+          errorCode === "MIN_AMOUNT_NOT_MET" ||
+          errorCode === "EXPIRED" ||
+          errorCode === "LIMIT_REACHED" ||
+          errorCode === "INVALID" ||
+          errorCode === "coupon"
+        ) {
+          const message = couponFailureMessage({
+            error: errorCode,
+            minOrder: typeof result?.minOrder === "number" ? result.minOrder : undefined,
+            amount: typeof result?.amount === "number" ? result.amount : undefined,
+          });
+          setAppliedCoupon(null);
+          setCouponMessage(message);
+          setError(message);
+          setPending(false);
+          return;
+        }
+
         setError(
           errorCode === "unauthorized" || response.status === 401
             ? t("orderUnauthorized")
