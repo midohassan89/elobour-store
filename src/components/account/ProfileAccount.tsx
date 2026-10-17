@@ -1,14 +1,15 @@
 "use client";
 
+import AddressForm, { type AddressFormValues } from "@/components/account/AddressForm";
 import OrderCards from "@/components/account/OrderCards";
 import { ReturnStatusBadge } from "@/components/account/StatusBadge";
 import LoginModal from "@/components/auth/LoginModal";
 import { useI18n } from "@/components/i18n/LanguageProvider";
-import type { AccountReturnRequest } from "@/lib/accountData";
+import type { AccountAddress, AccountReturnRequest } from "@/lib/accountData";
 import { useAuthStore } from "@/store/authStore";
 import { maskPhone } from "@/utils/maskPhone";
 import Link from "next/link";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type AccountOrder = {
   id: string;
@@ -27,20 +28,9 @@ type AccountOrder = {
   }[];
 };
 
-type AccountAddress = {
-  id: string;
-  title: string;
-  street: string;
-  city: string;
-  isDefault: boolean;
-};
-
-const fieldClassName =
-  "w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20";
-
 const tabClassName = (selected: boolean) =>
   `rounded-xl px-2 py-2.5 text-sm font-extrabold transition ${
-    selected ? "bg-white text-primary shadow-sm" : "text-stone-600 hover:text-stone-900"
+    selected ? "bg-white text-primary shadow-sm dark:bg-gray-900" : "text-stone-600 hover:text-stone-900 dark:text-gray-400 dark:hover:text-gray-100"
   }`;
 
 export default function ProfileAccount() {
@@ -55,9 +45,8 @@ export default function ProfileAccount() {
   const [addresses, setAddresses] = useState<AccountAddress[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [street, setStreet] = useState("");
-  const [city, setCity] = useState("");
+  const [editing, setEditing] = useState<AccountAddress | null>(null);
+  const [addressFormKey, setAddressFormKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState("");
@@ -154,17 +143,20 @@ export default function ProfileAccount() {
     }
   }
 
-  async function addAddress(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function saveAddress(values: AddressFormValues) {
     setFormError(null);
     setSaving(true);
+    const editingId = editing?.id;
 
     try {
-      const response = await fetch("/api/account/addresses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, street, city }),
-      });
+      const response = await fetch(
+        editingId ? `/api/account/addresses/${encodeURIComponent(editingId)}` : "/api/account/addresses",
+        {
+          method: editingId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+        },
+      );
       const payload = (await response.json().catch(() => null)) as { address?: AccountAddress; error?: string } | null;
 
       if (!response.ok || !payload?.address) {
@@ -172,15 +164,26 @@ export default function ProfileAccount() {
         return;
       }
 
+      const saved = payload.address;
       setAddresses((current) => {
-        const next = payload.address?.isDefault
-          ? current.map((address) => ({ ...address, isDefault: false }))
-          : current;
-        return [payload.address as AccountAddress, ...next.filter((address) => address.id !== payload.address?.id)];
+        if (editingId) {
+          return current.map((address) =>
+            address.id === saved.id
+              ? {
+                  ...address,
+                  ...saved,
+                  isDefault: address.isDefault,
+                  zone: saved.zoneId === address.zoneId ? address.zone : null,
+                }
+              : address,
+          );
+        }
+
+        const next = saved.isDefault ? current.map((address) => ({ ...address, isDefault: false })) : current;
+        return [saved, ...next.filter((address) => address.id !== saved.id)];
       });
-      setTitle("");
-      setStreet("");
-      setCity("");
+      setEditing(null);
+      setAddressFormKey((key) => key + 1);
     } catch {
       setFormError(t("addressFailed"));
     } finally {
@@ -190,7 +193,7 @@ export default function ProfileAccount() {
 
   if (!authReady) {
     return (
-      <section className="mx-auto max-w-3xl px-4 py-16 text-center text-sm font-bold text-stone-500 sm:px-6">
+      <section className="mx-auto max-w-3xl px-4 py-16 text-center text-sm font-bold text-stone-500 sm:px-6 dark:text-gray-400">
         {t("loadingAccount")}
       </section>
     );
@@ -199,9 +202,9 @@ export default function ProfileAccount() {
   if (!user) {
     return (
       <section className="mx-auto max-w-lg px-4 py-16 sm:px-6">
-        <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm sm:p-8">
+        <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm sm:p-8 dark:border-gray-800 dark:bg-gray-900">
           <h1 className="text-2xl font-extrabold text-stone-950">{t("profileLoginTitle")}</h1>
-          <p className="mt-2 text-sm leading-6 text-stone-600">{t("profileLoginBody")}</p>
+          <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-gray-400">{t("profileLoginBody")}</p>
           <button
             type="button"
             onClick={() => setLoginOpen(true)}
@@ -221,10 +224,10 @@ export default function ProfileAccount() {
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
       <header className="mb-6">
         <h1 className="text-2xl font-extrabold text-stone-950 sm:text-3xl">{t("profileTitle")}</h1>
-        <p className="mt-1 text-sm font-bold text-stone-500">{maskPhone(user.phone)}</p>
+        <p className="mt-1 text-sm font-bold text-stone-500 dark:text-gray-400">{maskPhone(user.phone)}</p>
       </header>
 
-      <div className="mb-6 grid grid-cols-3 gap-1 rounded-2xl bg-stone-100 p-1" role="tablist">
+      <div className="mb-6 grid grid-cols-3 gap-1 rounded-2xl bg-stone-100 p-1 dark:bg-gray-800" role="tablist">
         <button type="button" role="tab" aria-selected={tab === "orders"} onClick={() => setTab("orders")} className={tabClassName(tab === "orders")}>
           {t("myOrders")}
         </button>
@@ -236,13 +239,13 @@ export default function ProfileAccount() {
         </button>
       </div>
 
-      {loading ? <p className="text-sm font-bold text-stone-500">{t("loadingAccount")}</p> : null}
+      {loading ? <p className="text-sm font-bold text-stone-500 dark:text-gray-400">{t("loadingAccount")}</p> : null}
       {loadError ? <p className="text-sm font-bold text-red-600">{loadError}</p> : null}
 
       {tab === "orders" && !loading ? (
         <div className="space-y-4">
           {orders.length === 0 && !loadError ? (
-            <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500">
+            <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500 dark:border-gray-800 dark:text-gray-400">
               {t("ordersEmpty")}
             </p>
           ) : null}
@@ -259,7 +262,7 @@ export default function ProfileAccount() {
       {tab === "returns" && !loading ? (
         <div className="space-y-4">
           {returns.length === 0 && !loadError ? (
-            <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500">
+            <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500 dark:border-gray-800 dark:text-gray-400">
               {t("returnsEmpty")}
             </p>
           ) : null}
@@ -267,15 +270,15 @@ export default function ProfileAccount() {
             const created = request.createdAt ? new Date(request.createdAt) : null;
 
             return (
-              <article key={request.id} className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+              <article key={request.id} className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Link href={`/account/orders/${request.orderId}`} className="text-sm font-extrabold text-stone-900 hover:text-primary">
+                  <Link href={`/account/orders/${request.orderId}`} className="text-sm font-extrabold text-stone-900 hover:text-primary dark:text-gray-100">
                     #{request.orderId.slice(-6)}
                   </Link>
                   <ReturnStatusBadge status={request.status} />
                 </div>
                 {created && !Number.isNaN(created.getTime()) ? (
-                  <p className="mt-1 text-xs font-semibold text-stone-500">
+                  <p className="mt-1 text-xs font-semibold text-stone-500 dark:text-gray-400">
                     {created.toLocaleString(locale, {
                       year: "numeric",
                       month: "short",
@@ -285,7 +288,7 @@ export default function ProfileAccount() {
                     })}
                   </p>
                 ) : null}
-                <ul className="mt-3 space-y-1.5 text-sm text-stone-700">
+                <ul className="mt-3 space-y-1.5 text-sm text-stone-700 dark:text-gray-200">
                   {request.items.map((item) => (
                     <li key={item.id}>
                       {item.productName} × {item.quantity}
@@ -294,7 +297,7 @@ export default function ProfileAccount() {
                 </ul>
                 <Link
                   href={`/account/returns/${request.id}`}
-                  className="mt-4 inline-flex rounded-full border border-primary bg-white px-4 py-2 text-sm font-extrabold text-primary transition hover:bg-primary-50"
+                  className="mt-4 inline-flex rounded-full border border-primary bg-white px-4 py-2 text-sm font-extrabold text-primary transition hover:bg-primary-50 dark:bg-gray-900"
                 >
                   {t("trackReturn")}
                 </Link>
@@ -307,68 +310,57 @@ export default function ProfileAccount() {
       {tab === "addresses" && !loading ? (
         <div className="space-y-4">
           {addresses.length === 0 && !loadError ? (
-            <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500">
+            <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500 dark:border-gray-800 dark:text-gray-400">
               {t("addressesEmpty")}
             </p>
           ) : null}
           {addresses.map((address) => (
-            <article key={address.id} className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+            <article key={address.id} className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-extrabold text-stone-950">{address.title}</h2>
+                <h2 className="text-base font-extrabold text-stone-950 dark:text-gray-100">{address.title}</h2>
                 {address.isDefault ? (
                   <span className="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-extrabold text-primary-800">
                     {t("defaultAddress")}
                   </span>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(address);
+                    setFormError(null);
+                  }}
+                  className="ms-auto rounded-full border border-stone-300 px-4 py-2 text-sm font-extrabold text-stone-700 transition hover:bg-stone-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                >
+                  {t("editAddress")}
+                </button>
               </div>
-              <p className="mt-2 text-sm leading-6 text-stone-700">{address.street}</p>
-              <p className="text-sm font-bold text-stone-500">{address.city}</p>
+              {address.recipientName ? (
+                <p className="mt-2 text-sm font-bold text-stone-800 dark:text-gray-100">{address.recipientName}</p>
+              ) : null}
+              <p className="mt-2 text-sm leading-6 text-stone-700 dark:text-gray-200">{address.street}</p>
+              <p className="text-sm font-bold text-stone-500 dark:text-gray-400">{address.city}</p>
+              {address.phoneNumber ? (
+                <p className="text-sm font-bold text-stone-500 dark:text-gray-400">{address.phoneNumber}</p>
+              ) : null}
             </article>
           ))}
 
-          <form onSubmit={(event) => void addAddress(event)} className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
-            <h2 className="text-base font-extrabold text-stone-950">{t("addAddress")}</h2>
-            <div className="mt-4 grid gap-3">
-              <label className="grid gap-1.5 text-sm font-bold text-stone-700">
-                {t("addressTitleLabel")}
-                <input
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  placeholder={t("addressTitlePlaceholder")}
-                  className={fieldClassName}
-                  required
-                />
-              </label>
-              <label className="grid gap-1.5 text-sm font-bold text-stone-700">
-                {t("addressStreetLabel")}
-                <input
-                  value={street}
-                  onChange={(event) => setStreet(event.target.value)}
-                  placeholder={t("addressStreetPlaceholder")}
-                  className={fieldClassName}
-                  required
-                />
-              </label>
-              <label className="grid gap-1.5 text-sm font-bold text-stone-700">
-                {t("addressCityLabel")}
-                <input
-                  value={city}
-                  onChange={(event) => setCity(event.target.value)}
-                  placeholder={t("addressCityPlaceholder")}
-                  className={fieldClassName}
-                  required
-                />
-              </label>
-            </div>
-            {formError ? <p className="mt-3 text-sm font-bold text-red-600">{formError}</p> : null}
-            <button
-              type="submit"
-              disabled={saving}
-              className="mt-4 w-full rounded-full bg-primary px-5 py-3 text-sm font-extrabold text-white transition hover:bg-primary-500 disabled:opacity-60 sm:w-auto"
-            >
-              {saving ? t("savingAddress") : t("saveAddress")}
-            </button>
-          </form>
+          <AddressForm
+            key={editing?.id ?? `new-${addressFormKey}`}
+            initialData={editing}
+            title={editing ? t("editAddress") : t("addAddress")}
+            pending={saving}
+            error={formError}
+            onSubmit={(values) => void saveAddress(values)}
+            onCancel={
+              editing
+                ? () => {
+                    setEditing(null);
+                    setFormError(null);
+                  }
+                : undefined
+            }
+          />
         </div>
       ) : null}
     </section>

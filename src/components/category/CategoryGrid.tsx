@@ -74,7 +74,7 @@ export default function CategoryGrid() {
       aria-label={t("shopByCategory")}
       className="mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6"
     >
-      <h2 className="relative mb-6 text-2xl font-bold text-gray-900">
+      <h2 className="relative mb-6 text-2xl font-bold text-gray-900 dark:text-gray-100">
         {t("shopByCategory")}
         <span
           aria-hidden="true"
@@ -90,10 +90,10 @@ export default function CategoryGrid() {
             <Link
               key={category.id}
               href={`/shop?categoryId=${encodeURIComponent(category.id)}`}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-green-600 hover:shadow-md"
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-gray-100 bg-white dark:border-gray-800 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-green-600 hover:shadow-md dark:bg-gray-900"
             >
               <Icon className="h-8 w-8 text-green-600" strokeWidth={1.75} aria-hidden="true" />
-              <span className="text-center text-sm font-semibold text-gray-700">{label}</span>
+              <span className="text-center text-sm font-semibold text-gray-700 dark:text-gray-200">{label}</span>
             </Link>
           );
         })}

@@ -12,7 +12,7 @@ function BrandLogo({ imageUrl, label }: { imageUrl: string; label: string }) {
   const [failed, setFailed] = useState(false);
 
   if (!imageUrl || failed) {
-    return <span className="text-2xl font-bold text-gray-400">{label.slice(0, 1)}</span>;
+    return <span className="text-2xl font-bold text-gray-400 dark:text-gray-500">{label.slice(0, 1)}</span>;
   }
 
   return (
@@ -91,7 +91,7 @@ export default function BrandCarousel() {
 
   return (
     <section aria-label={t("shopByBrand")} className="mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6">
-      <h2 className="relative mb-6 text-2xl font-bold text-gray-900">
+      <h2 className="relative mb-6 text-2xl font-bold text-gray-900 dark:text-gray-100">
         {t("shopByBrand")}
         <span
           aria-hidden="true"
@@ -109,10 +109,10 @@ export default function BrandCarousel() {
               href={`/shop?brandId=${encodeURIComponent(brand.id)}`}
               className="flex shrink-0 cursor-pointer flex-col items-center"
             >
-              <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 shadow-sm transition-colors hover:border-green-400 hover:bg-green-50">
+              <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 shadow-sm transition-colors hover:border-green-400 hover:bg-green-50 dark:border-gray-800 dark:bg-gray-900">
                 <BrandLogo imageUrl={imageUrl} label={label} />
               </span>
-              <span className="mt-2 w-20 truncate text-center text-xs font-medium text-gray-600">
+              <span className="mt-2 w-20 truncate text-center text-xs font-medium text-gray-600 dark:text-gray-400">
                 {label}
               </span>
             </Link>

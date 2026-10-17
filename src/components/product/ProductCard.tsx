@@ -197,7 +197,7 @@ export default function ProductCard({
   const imageUrl = resolveProductImage(image);
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md">
+    <article className="flex h-full flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
       <div className="relative aspect-square overflow-hidden">
         {imageUrl ? (
           <SafeImage
@@ -209,8 +209,8 @@ export default function ProductCard({
             priority={priority}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-            <ShoppingBag className="h-12 w-12 text-gray-300 stroke-[1.5]" aria-hidden="true" />
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+            <ShoppingBag className="h-12 w-12 text-gray-300 stroke-[1.5] dark:text-gray-600" aria-hidden="true" />
           </div>
         )}
         {isOutOfStock ? (
@@ -220,11 +220,11 @@ export default function ProductCard({
         ) : null}
       </div>
       <div className="flex flex-1 flex-col p-4">
-      <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-stone-900 sm:text-base">
+      <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-stone-900 sm:text-base dark:text-gray-100">
         {localizedName}
       </h3>
       {brandName ? (
-        <p className="mt-1 text-xs font-medium text-stone-400">{brandName}</p>
+        <p className="mt-1 text-xs font-medium text-stone-400 dark:text-gray-500">{brandName}</p>
       ) : (
         <div className="mt-1 h-4" />
       )}
@@ -237,7 +237,7 @@ export default function ProductCard({
             className={`cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors ${
               selectedOption === "base"
                 ? "border-primary bg-primary text-white"
-                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-200"
+                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
             }`}
           >
             {baseUnitLabel}
@@ -263,7 +263,7 @@ export default function ProductCard({
                 className={`max-w-full cursor-pointer rounded-lg border px-2.5 py-1 text-center text-xs font-bold whitespace-nowrap transition-colors ${
                   isSelected
                     ? "border-primary bg-primary text-white"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-200"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
                 }`}
               >
                 {packageLabel}
@@ -280,7 +280,7 @@ export default function ProductCard({
           <span className="text-base font-extrabold text-primary">
             {displayPrice} {t("currency")}
           </span>
-          <span className="text-sm text-gray-500 line-through">
+          <span className="text-sm text-gray-500 line-through dark:text-gray-400">
             {regularPrice} {t("currency")}
           </span>
         </p>
@@ -290,7 +290,7 @@ export default function ProductCard({
         </p>
       )}
       {selectedOption !== "base" ? (
-        <p className="mt-1 text-center text-[10px] text-gray-500">
+        <p className="mt-1 text-center text-[10px] text-gray-500 dark:text-gray-400">
           {piecePriceLabel(language, baseUnitLabel, basePrice)}
         </p>
       ) : null}

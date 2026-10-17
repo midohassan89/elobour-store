@@ -113,23 +113,23 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="login-title"
-        className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8"
+        className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8 dark:bg-gray-900"
       >
         <button
           type="button"
           onClick={onClose}
           aria-label={t("close")}
-          className="absolute end-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
+          className="absolute end-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
         >
           <X className="h-5 w-5" />
         </button>
         <p className="text-sm font-bold text-primary">{t("storeName")}</p>
-        <h2 id="login-title" className="mt-2 text-2xl font-extrabold text-stone-900">
+        <h2 id="login-title" className="mt-2 text-2xl font-extrabold text-stone-900 dark:text-gray-100">
           {t("loginTitle")}
         </h2>
-        <p className="mt-2 text-sm leading-7 text-stone-500">{t("loginSubtitle")}</p>
+        <p className="mt-2 text-sm leading-7 text-stone-500 dark:text-gray-400">{t("loginSubtitle")}</p>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <label htmlFor="login-phone" className="block text-sm font-bold text-stone-800">
+          <label htmlFor="login-phone" className="block text-sm font-bold text-stone-800 dark:text-gray-100">
             {t("phone")}
           </label>
           <input
@@ -146,11 +146,11 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
               setFullName("");
             }}
             placeholder={t("phonePlaceholder")}
-            className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-lg text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20"
+            className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-lg text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:bg-gray-900"
           />
           {needsName ? (
             <div>
-              <label htmlFor="login-name" className="mb-2 block text-sm font-bold text-stone-800">
+              <label htmlFor="login-name" className="mb-2 block text-sm font-bold text-stone-800 dark:text-gray-100">
                 {t("fullName")}
                 <span className="text-primary"> *</span>
               </label>
@@ -162,7 +162,7 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
                 required
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
-                className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-lg text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20"
+                className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-lg text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:bg-gray-900"
               />
             </div>
           ) : null}

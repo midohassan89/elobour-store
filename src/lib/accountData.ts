@@ -227,6 +227,63 @@ export async function createCustomerAddress(
   });
 }
 
+export async function updateCustomerAddress(
+  customerId: string,
+  addressId: string,
+  input: {
+    title: string;
+    street: string;
+    city: string;
+    recipientName?: string | null;
+    phoneNumber?: string | null;
+    zoneId?: string | null;
+  },
+): Promise<AccountAddress | null> {
+  const title = input.title.trim().slice(0, 80);
+  const street = input.street.trim().slice(0, 300);
+  const city = input.city.trim().slice(0, 120) || "العين السخنة";
+  const recipientName = input.recipientName?.trim().slice(0, 80) || null;
+  const phoneNumber = input.phoneNumber?.trim().slice(0, 30) || null;
+  const zoneId = input.zoneId?.trim() || null;
+  const now = new Date().toISOString();
+
+  const existing = await prisma.$queryRaw<Array<{ isDefault: number | boolean | bigint }>>`
+    SELECT isDefault
+    FROM Address
+    WHERE id = ${addressId} AND customerId = ${customerId}
+    LIMIT 1
+  `;
+
+  if (!existing[0]) {
+    return null;
+  }
+
+  await prisma.$executeRaw`
+    UPDATE Address
+    SET
+      title = ${title},
+      street = ${street},
+      city = ${city},
+      recipientName = ${recipientName},
+      phoneNumber = ${phoneNumber},
+      zoneId = ${zoneId},
+      updatedAt = ${now}
+    WHERE id = ${addressId} AND customerId = ${customerId}
+  `;
+
+  return {
+    id: addressId,
+    title,
+    street,
+    city,
+    recipientName,
+    phoneNumber,
+    zoneId,
+    isDefault: isDefaultAddress(existing[0].isDefault),
+    zone: null,
+  };
+}
+
 export async function deleteCustomerAddress(customerId: string, addressId: string) {
   const now = new Date().toISOString();
 

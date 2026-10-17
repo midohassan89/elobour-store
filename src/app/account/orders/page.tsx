@@ -6,7 +6,7 @@ export default function OrdersPage() {
   return (
     <>
       <Header />
-      <main className="flex-1 bg-stone-50">
+      <main className="flex-1 bg-stone-50 dark:bg-gray-900">
         <OrderHistory />
       </main>
       <Footer />

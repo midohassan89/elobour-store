@@ -174,6 +174,7 @@ const ar: Dictionary = {
   returnStatusCompleted: "تم الاستلام بنجاح",
   returnStatusCancelled: "ملغي",
   addAddress: "إضافة عنوان",
+  editAddress: "تعديل العنوان",
   addressTitleLabel: "اسم العنوان",
   addressStreetLabel: "الشارع",
   addressCityLabel: "المدينة",

@@ -7,7 +7,7 @@ export default function Footer() {
   const { t } = useI18n();
 
   return (
-    <footer className="mt-auto bg-stone-950 text-stone-300">
+    <footer className="mt-auto bg-stone-950 text-stone-300 dark:text-gray-400">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-3">
         <section>
           <h2 className="text-sm font-bold text-white">{t("storeName")}</h2>
@@ -48,7 +48,7 @@ export default function Footer() {
         </section>
       </div>
 
-      <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-stone-500">
+      <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-stone-500 dark:text-gray-400">
         © {new Date().getFullYear()} {t("storeName")}
       </div>
     </footer>

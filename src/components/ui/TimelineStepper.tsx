@@ -30,7 +30,7 @@ export default function TimelineStepper({ steps, currentStatus, isCancelled = fa
 
   function connectorClass(index: number) {
     const next = stateFor(index + 1);
-    return next === "completed" || next === "current" ? "bg-primary" : "bg-stone-200";
+    return next === "completed" || next === "current" ? "bg-primary" : "bg-stone-200 dark:bg-gray-700";
   }
 
   return (
@@ -43,7 +43,7 @@ export default function TimelineStepper({ steps, currentStatus, isCancelled = fa
           state === "cancelled"
             ? "bg-red-600 text-white"
             : state === "future"
-              ? "border border-stone-200 bg-stone-100 text-stone-400"
+              ? "border border-stone-200 bg-stone-100 text-stone-400 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-500"
               : "bg-primary text-white";
         const labelClass =
           state === "cancelled"
@@ -52,7 +52,7 @@ export default function TimelineStepper({ steps, currentStatus, isCancelled = fa
               ? "font-extrabold text-stone-950"
               : state === "completed"
                 ? "font-bold text-green-800"
-                : "font-semibold text-stone-400";
+                : "font-semibold text-stone-400 dark:text-gray-500";
 
         return (
           <li

@@ -174,6 +174,7 @@ const zh: Dictionary = {
   returnStatusCompleted: "已成功收到",
   returnStatusCancelled: "已取消",
   addAddress: "添加地址",
+  editAddress: "编辑地址",
   addressTitleLabel: "地址名称",
   addressStreetLabel: "街道",
   addressCityLabel: "城市",

@@ -37,7 +37,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       dir={directionFor(language)}
       className={`${cairo.className} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-white text-stone-900">
+      <body className="flex min-h-full flex-col bg-white text-stone-900 transition-colors dark:bg-gray-950 dark:text-gray-100">
         <LanguageProvider initialLanguage={language}>
           {children}
           <Toaster position="bottom-center" />

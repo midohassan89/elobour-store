@@ -78,11 +78,11 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
         role="dialog"
         aria-modal={open}
         aria-labelledby="cart-title"
-        className={`absolute inset-y-0 end-0 flex w-full max-w-md flex-col bg-white shadow-2xl transition-transform duration-300 ${
+        className={`absolute inset-y-0 end-0 flex w-full max-w-md flex-col bg-white shadow-2xl transition-transform duration-300 dark:bg-gray-900 dark:text-gray-100 ${
           open ? "translate-x-0" : "rtl:-translate-x-full ltr:translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4 dark:border-gray-800">
           <h2 id="cart-title" className="text-lg font-extrabold">
             {t("cartTitle")}
           </h2>
@@ -90,7 +90,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             type="button"
             onClick={onClose}
             aria-label={t("close")}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-stone-600 transition hover:bg-stone-100 hover:text-stone-900"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
           >
             <X className="h-5 w-5" />
           </button>
@@ -98,7 +98,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
         <div className="flex-1 overflow-y-auto px-5">
           {items.length === 0 ? (
-            <p className="py-16 text-center text-sm text-stone-500">
+            <p className="py-16 text-center text-sm text-stone-500 dark:text-gray-400">
               {t("cartEmpty")}
             </p>
           ) : (
@@ -110,22 +110,22 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                 return (
                 <li
                   key={item.id}
-                  className="flex items-center gap-3 border-b border-stone-100 py-4"
+                  className="flex items-center gap-3 border-b border-stone-100 py-4 dark:border-gray-800"
                 >
-                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100">
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 dark:bg-gray-800">
                     {imageUrl ? (
                       // Product photos stay on /uploads and must not pass through /_next/image.
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={imageUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
-                        <ShoppingBag className="h-5 w-5 text-stone-300" aria-hidden="true" />
+                        <ShoppingBag className="h-5 w-5 text-stone-300 dark:text-gray-400" aria-hidden="true" />
                       </div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold leading-6">{localizedName}</p>
-                    <p className="mt-1 text-sm text-stone-500">
+                    <p className="mt-1 text-sm text-stone-500 dark:text-gray-400">
                       {item.price} {t("currency")}
                     </p>
                   </div>
@@ -141,7 +141,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                     type="button"
                     aria-label={t("removeItem", { name: localizedName })}
                     onClick={() => removeItem(item.id)}
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition hover:bg-red-50 hover:text-red-600"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition hover:bg-red-50 hover:text-red-600 dark:text-gray-400"
                   >
                     <Trash className="h-4 w-4" />
                   </button>
@@ -152,9 +152,9 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
           )}
         </div>
 
-        <div className="border-t border-stone-200 px-5 py-4">
+        <div className="border-t border-stone-200 px-5 py-4 dark:border-gray-800">
           {ready && items.length > 0 ? (
-            <p className="mb-3 rounded-2xl bg-primary-50 px-3 py-2 text-sm font-bold text-primary-800">
+            <p className="mb-3 rounded-2xl bg-primary-50 px-3 py-2 text-sm font-bold text-primary-800 dark:border dark:border-gray-700 dark:bg-gray-800 dark:text-emerald-400">
               {t("earnOnOrder", { count: earnedPoints })}
             </p>
           ) : null}

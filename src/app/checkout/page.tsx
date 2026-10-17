@@ -1,5 +1,6 @@
 "use client";
 
+import AddressForm, { type AddressFormValues } from "@/components/account/AddressForm";
 import LoginModal from "@/components/auth/LoginModal";
 import DeliveryTimePicker, {
   isDeliveryTimeAllowed,
@@ -8,7 +9,6 @@ import DeliveryTimePicker, {
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-import type { Language } from "@/locales/types";
 import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
@@ -46,7 +46,7 @@ type SavedAddress = {
 const DEFAULT_ADDRESS_CITY = "العين السخنة";
 
 const fieldClassName =
-  "w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20";
+  "w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:bg-gray-900";
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -96,20 +96,15 @@ function readAddress(value: unknown): SavedAddress | null {
   };
 }
 
-function zoneLabel(zone: Partial<DeliveryZone> | null | undefined, language: Language) {
-  const nameEn = text(zone?.nameEn);
-  const nameZh = text(zone?.nameZh);
-  const nameAr = text(zone?.nameAr);
-
-  if (language === "en" && nameEn) {
-    return nameEn;
-  }
-
-  if (language === "zh" && nameZh) {
-    return nameZh;
-  }
-
-  return nameAr;
+function emptyAddressDraft(zoneId = ""): AddressFormValues {
+  return {
+    title: "",
+    recipientName: "",
+    street: "",
+    phoneNumber: "",
+    city: DEFAULT_ADDRESS_CITY,
+    zoneId,
+  };
 }
 
 export default function CheckoutPage() {
@@ -135,13 +130,10 @@ export default function CheckoutPage() {
   const [addressesLoaded, setAddressesLoaded] = useState(false);
   const [addressChoice, setAddressChoice] = useState("");
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [addressFormKey, setAddressFormKey] = useState(0);
+  const [draft, setDraft] = useState<AddressFormValues>(() => emptyAddressDraft());
   const [loginOpen, setLoginOpen] = useState(false);
-  const [recipientName, setRecipientName] = useState("");
-  const [titleChoice, setTitleChoice] = useState<"home" | "work" | "other">("home");
-  const [customTitle, setCustomTitle] = useState("");
   const [deliveryTime, setDeliveryTime] = useState(() => nextValidDeliveryTime());
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [street, setStreet] = useState("");
   const [savingAddress, setSavingAddress] = useState(false);
   const [deletingAddressId, setDeletingAddressId] = useState("");
   const deliveryZones = zones ?? [];
@@ -158,16 +150,11 @@ export default function CheckoutPage() {
   const merchandiseDue = Math.max(0, totalPrice - pointsDiscount);
   const finalTotal = merchandiseDue + shippingFee;
   const earnedPoints = Math.floor(merchandiseDue * earnRatio);
-  const resolvedAddressTitle =
-    titleChoice === "other"
-      ? customTitle.trim()
-      : titleChoice === "work"
-        ? t("addressTitleWork")
-        : t("addressTitleHome");
+  const resolvedAddressTitle = showNewAddressForm ? draft.title.trim() : text(selectedSaved?.title);
   const isLoading = !authReady || Boolean(user?.id && (!zonesLoaded || !addressesLoaded));
-  const activeRecipient = showNewAddressForm ? recipientName.trim() : text(selectedSaved?.recipientName);
-  const activePhone = showNewAddressForm ? phoneNumber.trim() : text(selectedSaved?.phoneNumber);
-  const activeStreet = showNewAddressForm ? street.trim() : text(selectedSaved?.street);
+  const activeRecipient = showNewAddressForm ? draft.recipientName.trim() : text(selectedSaved?.recipientName);
+  const activePhone = showNewAddressForm ? draft.phoneNumber.trim() : text(selectedSaved?.phoneNumber);
+  const activeStreet = showNewAddressForm ? draft.street.trim() : text(selectedSaved?.street);
   const activeCity = showNewAddressForm ? DEFAULT_ADDRESS_CITY : text(selectedSaved?.city) || DEFAULT_ADDRESS_CITY;
   const addressReady = Boolean(deliveryTime && activeRecipient && activePhone && activeStreet && activeCity && selectedZone) &&
     (showNewAddressForm ? Boolean(resolvedAddressTitle) : Boolean(selectedSaved));
@@ -263,16 +250,12 @@ export default function CheckoutPage() {
         if (!preferred) {
           setAddressChoice("new");
           setShowNewAddressForm(true);
-          setPhoneNumber("");
-          setRecipientName("");
+          setDraft(emptyAddressDraft());
           return;
         }
 
         setShowNewAddressForm(false);
         setAddressChoice(preferred.id);
-        setPhoneNumber(preferred.phoneNumber || "");
-        setRecipientName(preferred.recipientName || "");
-        setStreet(preferred.street);
         if (preferred.zoneId) {
           setSelectedZoneId(preferred.zoneId);
         }
@@ -309,9 +292,6 @@ export default function CheckoutPage() {
   function selectSavedAddress(address: SavedAddress) {
     setShowNewAddressForm(false);
     setAddressChoice(address.id);
-    setPhoneNumber(address.phoneNumber || "");
-    setRecipientName(address.recipientName || "");
-    setStreet(address.street);
     if (address.zoneId) {
       setSelectedZoneId(address.zoneId);
     }
@@ -320,11 +300,8 @@ export default function CheckoutPage() {
   function selectNewAddress() {
     setShowNewAddressForm(true);
     setAddressChoice("new");
-    setStreet("");
-    setTitleChoice("home");
-    setCustomTitle("");
-    setRecipientName("");
-    setPhoneNumber("");
+    setDraft(emptyAddressDraft(selectedZoneId));
+    setAddressFormKey((key) => key + 1);
   }
 
   function cancelNewAddress() {
@@ -339,18 +316,14 @@ export default function CheckoutPage() {
     selectSavedAddress(preferred);
   }
 
-  async function saveNewAddress() {
+  async function saveNewAddress(values: AddressFormValues) {
+    const zone = deliveryZones.find((item) => item.id === values.zoneId) ?? null;
+
     if (!user?.id || savingAddress) {
       return;
     }
 
-    if (
-      !selectedZone ||
-      !recipientName.trim() ||
-      !street.trim() ||
-      !phoneNumber.trim() ||
-      !resolvedAddressTitle
-    ) {
+    if (!zone || !values.recipientName.trim() || !values.street.trim() || !values.phoneNumber.trim() || !values.title.trim()) {
       setError(t("addressRequired"));
       return;
     }
@@ -363,12 +336,12 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: resolvedAddressTitle,
-          recipientName: recipientName.trim(),
-          street: street.trim(),
-          city: DEFAULT_ADDRESS_CITY,
-          phoneNumber: phoneNumber.trim(),
-          zoneId: selectedZone.id,
+          title: values.title.trim(),
+          recipientName: values.recipientName.trim(),
+          street: values.street.trim(),
+          city: values.city.trim() || DEFAULT_ADDRESS_CITY,
+          phoneNumber: values.phoneNumber.trim(),
+          zoneId: zone.id,
         }),
       });
       const payload = (await response.json().catch(() => null)) as { address?: unknown } | null;
@@ -379,7 +352,7 @@ export default function CheckoutPage() {
         return;
       }
 
-      const saved = { ...created, zone: selectedZone, zoneId: selectedZone.id };
+      const saved = { ...created, zone, zoneId: zone.id };
       setAddresses((current) => [saved, ...(current || []).filter((address) => address.id !== saved.id)]);
       selectSavedAddress(saved);
     } catch {
@@ -424,11 +397,8 @@ export default function CheckoutPage() {
       if (!preferred) {
         setAddressChoice("new");
         setShowNewAddressForm(true);
-        setStreet("");
-        setRecipientName("");
-        setPhoneNumber("");
-        setTitleChoice("home");
-        setCustomTitle("");
+        setDraft(emptyAddressDraft(selectedZoneId));
+        setAddressFormKey((key) => key + 1);
         return;
       }
 
@@ -537,7 +507,7 @@ export default function CheckoutPage() {
       <main className="flex-1">
         <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
           <h1 className="text-2xl font-extrabold sm:text-3xl">{t("checkoutTitle")}</h1>
-          <p className="mt-2 text-sm leading-7 text-stone-600 sm:text-base">{t("checkoutIntro")}</p>
+          <p className="mt-2 text-sm leading-7 text-stone-600 sm:text-base dark:text-gray-400">{t("checkoutIntro")}</p>
 
           {submitted ? (
             <p
@@ -548,16 +518,16 @@ export default function CheckoutPage() {
             </p>
           ) : isLoading ? (
             <div className="mt-8 grid gap-6 lg:grid-cols-5" aria-busy="true" aria-live="polite">
-              <div className="space-y-4 rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 lg:col-span-3">
-                <div className="h-12 animate-pulse rounded-2xl bg-stone-100" />
-                <div className="h-24 animate-pulse rounded-2xl bg-stone-100" />
-                <div className="h-12 animate-pulse rounded-2xl bg-stone-100" />
-                <div className="h-12 animate-pulse rounded-2xl bg-stone-100" />
+              <div className="space-y-4 rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 lg:col-span-3 dark:border-gray-800 dark:bg-gray-900">
+                <div className="h-12 animate-pulse rounded-2xl bg-stone-100 dark:bg-gray-800" />
+                <div className="h-24 animate-pulse rounded-2xl bg-stone-100 dark:bg-gray-800" />
+                <div className="h-12 animate-pulse rounded-2xl bg-stone-100 dark:bg-gray-800" />
+                <div className="h-12 animate-pulse rounded-2xl bg-stone-100 dark:bg-gray-800" />
               </div>
-              <div className="h-56 animate-pulse rounded-3xl bg-stone-100 lg:col-span-2" />
+              <div className="h-56 animate-pulse rounded-3xl bg-stone-100 lg:col-span-2 dark:bg-gray-800" />
             </div>
           ) : !user ? (
-            <div className="mx-auto mt-8 max-w-xl rounded-3xl border border-stone-200 bg-white px-6 py-12 text-center shadow-sm">
+            <div className="mx-auto mt-8 max-w-xl rounded-3xl border border-stone-200 bg-white px-6 py-12 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <p className="text-xl font-extrabold leading-9 text-stone-950">{t("loginToCheckout")}</p>
               <button
                 type="button"
@@ -569,13 +539,10 @@ export default function CheckoutPage() {
             </div>
           ) : (
             <div className="mt-8 grid gap-6 lg:grid-cols-5">
-              <form
-                onSubmit={handleSubmit}
-                className="space-y-5 rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6 lg:col-span-3"
-              >
+              <div className="space-y-5 rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6 lg:col-span-3 dark:border-gray-800 dark:bg-gray-900">
                 {(savedAddresses || []).length > 0 && !showNewAddressForm ? (
                   <fieldset className="space-y-3">
-                    <legend className="text-sm font-extrabold text-stone-950">{t("savedAddresses")}</legend>
+                    <legend className="text-sm font-extrabold text-stone-950 dark:text-gray-100">{t("savedAddresses")}</legend>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {(savedAddresses || []).map((address) => {
                         const selected = addressChoice === address?.id;
@@ -586,7 +553,7 @@ export default function CheckoutPage() {
                             className={`flex h-32 items-start gap-2 rounded-2xl border px-3 py-2.5 transition ${
                               selected
                                 ? "border-primary bg-primary-50 ring-2 ring-primary/20"
-                                : "border-stone-200 bg-white"
+                                : "border-stone-200 bg-white dark:border-gray-800 dark:bg-gray-900"
                             }`}
                           >
                             <button
@@ -597,25 +564,25 @@ export default function CheckoutPage() {
                             >
                               <span
                                 className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                                  selected ? "border-primary bg-primary" : "border-stone-300 bg-white"
+                                  selected ? "border-primary bg-primary" : "border-stone-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                                 }`}
                                 aria-hidden="true"
                               >
                                 {selected ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : null}
                               </span>
                               <span className="min-w-0">
-                                <span className="block truncate text-sm font-extrabold text-stone-950">
+                                <span className={`block truncate text-sm font-extrabold text-stone-950${selected ? "" : " dark:text-gray-200"}`}>
                                   {address?.recipientName || address?.title}
                                 </span>
                                 {address?.recipientName ? (
-                                  <span className="block truncate text-xs font-bold text-stone-500">
+                                  <span className={`block truncate text-xs font-bold text-stone-500${selected ? "" : " dark:text-gray-200"}`}>
                                     {address.title}
                                   </span>
                                 ) : null}
-                                <span className="block truncate text-xs leading-5 text-stone-600">
+                                <span className={`block truncate text-xs leading-5 text-stone-600${selected ? "" : " dark:text-gray-200"}`}>
                                   {address?.street}
                                 </span>
-                                <span className="block truncate text-xs font-bold text-stone-800">
+                                <span className={`block truncate text-xs font-bold text-stone-800${selected ? "" : " dark:text-gray-200"}`}>
                                   {address?.phoneNumber || ""}
                                 </span>
                               </span>
@@ -636,7 +603,7 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         onClick={selectNewAddress}
-                        className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-stone-300 bg-stone-50 px-3 text-sm font-extrabold text-stone-800 transition hover:border-primary hover:bg-primary-50 hover:text-primary"
+                        className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-stone-300 dark:border-gray-700 bg-stone-50 px-3 text-sm font-extrabold text-stone-800 transition hover:border-primary hover:bg-primary-50 hover:text-primary dark:bg-gray-900 dark:text-gray-100"
                       >
                         <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-current text-2xl leading-none">
                           +
@@ -648,127 +615,26 @@ export default function CheckoutPage() {
                 ) : null}
 
                 {showNewAddressForm ? (
-                  <div className="space-y-5 rounded-3xl border border-stone-100 bg-stone-50/70 p-4 sm:p-5">
-                    <div>
-                      <label htmlFor="address-title" className="mb-2 block text-sm font-bold">
-                        {t("addressTitleLabel")}
-                      </label>
-                      <select
-                        id="address-title"
-                        value={titleChoice}
-                        onChange={(event) => setTitleChoice(event.target.value as "home" | "work" | "other")}
-                        className={fieldClassName}
-                      >
-                        <option value="home">{t("addressTitleHome")}</option>
-                        <option value="work">{t("addressTitleWork")}</option>
-                        <option value="other">{t("addressTitleOther")}</option>
-                      </select>
-                      {titleChoice === "other" ? (
-                        <input
-                          id="address-title-custom"
-                          value={customTitle}
-                          onChange={(event) => setCustomTitle(event.target.value)}
-                          placeholder={t("addressTitleCustom")}
-                          className={`${fieldClassName} mt-3`}
-                          required
-                        />
-                      ) : null}
-                    </div>
-
-                    <div>
-                      <label htmlFor="recipient-name" className="mb-2 block text-sm font-bold">
-                        {t("recipientName")}
-                        <span className="text-primary"> *</span>
-                      </label>
-                      <input
-                        id="recipient-name"
-                        name="recipientName"
-                        type="text"
-                        required
-                        autoComplete="name"
-                        value={recipientName}
-                        onChange={(event) => setRecipientName(event.target.value)}
-                        className={fieldClassName}
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="detailed-address" className="mb-2 block text-sm font-bold">
-                        {t("addressDetails")}
-                      </label>
-                      <input
-                        id="detailed-address"
-                        type="text"
-                        required
-                        value={street}
-                        onChange={(event) => setStreet(event.target.value)}
-                        placeholder={t("addressPlaceholder")}
-                        className={fieldClassName}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="phone" className="mb-2 block text-sm font-bold">
-                        {t("phone")}
-                        <span className="text-primary"> *</span>
-                      </label>
-                      <input
-                        id="phone"
-                        name="phoneNumber"
-                        type="tel"
-                        inputMode="tel"
-                        required
-                        autoComplete="tel"
-                        value={phoneNumber}
-                        onChange={(event) => setPhoneNumber(event.target.value)}
-                        placeholder={t("phonePlaceholder")}
-                        className={fieldClassName}
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="delivery-zone" className="mb-2 block text-sm font-bold">
-                        {t("deliveryArea")}
-                      </label>
-                      <select
-                        id="delivery-zone"
-                        required
-                        value={selectedZoneId}
-                        onChange={(event) => setSelectedZoneId(event.target.value)}
-                        className={fieldClassName}
-                      >
-                        {(deliveryZones || []).map((zone) => (
-                          <option key={zone?.id} value={zone?.id}>
-                            {zoneLabel(zone, language)}
-                          </option>
-                        ))}
-                      </select>
-                      {zonesLoaded && (zonesError || (deliveryZones || []).length === 0) ? (
-                        <p className="mt-2 text-sm font-bold text-red-600">{t("zonesUnavailable")}</p>
-                      ) : null}
-                    </div>
-
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={() => void saveNewAddress()}
-                        disabled={savingAddress}
-                        className="rounded-full bg-primary px-6 py-3.5 text-base font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary-500 hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none"
-                      >
-                        {savingAddress ? t("savingAddress") : t("saveAddress")}
-                      </button>
-                      {(savedAddresses || []).length > 0 ? (
-                        <button
-                          type="button"
-                          onClick={cancelNewAddress}
-                          className="rounded-full border border-stone-300 bg-transparent px-6 py-3.5 text-base font-bold text-stone-500 transition hover:border-stone-400 hover:bg-stone-100 hover:text-stone-800"
-                        >
-                          {t("cancel")}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
+                  <AddressForm
+                    key={addressFormKey}
+                    zones={deliveryZones}
+                    zonesUnavailable={zonesLoaded && (zonesError || deliveryZones.length === 0)}
+                    pending={savingAddress}
+                    onChange={(values) => {
+                      setDraft(values);
+                      if (values.zoneId) {
+                        setSelectedZoneId(values.zoneId);
+                      }
+                    }}
+                    onSubmit={(values) => void saveNewAddress(values)}
+                    onCancel={(savedAddresses || []).length > 0 ? cancelNewAddress : undefined}
+                    error={error}
+                  />
                 ) : null}
 
+                {!showNewAddressForm ? (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                <hr className="my-8 border-gray-200 dark:border-gray-800" />
                 <div>
                   <label htmlFor="delivery-time" className="mb-2 block text-sm font-bold">
                     {t("deliveryTime")}
@@ -779,21 +645,21 @@ export default function CheckoutPage() {
                     onChange={setDeliveryTime}
                     locale={language}
                   />
-                  <p className="mt-2 text-sm text-stone-500">{t("deliveryTimeHint")}</p>
+                  <p className="mt-2 text-sm text-stone-500 dark:text-gray-400">{t("deliveryTimeHint")}</p>
                 </div>
 
                 {authReady && user && Number(user.pointsBalance) > 0 ? (
-                  <fieldset className="rounded-3xl border border-primary-200 bg-primary-50 p-4">
-                    <legend className="px-1 text-sm font-extrabold text-primary-900">
+                  <fieldset className="rounded-3xl border border-primary-200 bg-primary-50 p-4 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                    <legend className="px-1 text-sm font-extrabold text-primary-900 dark:text-gray-200">
                       {t("redeemPoints")}
                     </legend>
-                    <p className="text-sm font-semibold leading-7 text-primary-900">
+                    <p className="text-sm font-semibold leading-7 text-primary-900 dark:text-gray-200">
                       {t("pointsWorth", {
                         points: user?.pointsBalance ?? 0,
                         amount: formatPointsAmount(discountForPoints(user?.pointsBalance ?? 0, redeemValue)),
                       })}
                     </p>
-                    <label className="mt-3 flex items-center gap-2 text-sm font-bold text-stone-800">
+                    <label className="mt-3 flex items-center gap-2 text-sm font-bold text-stone-800 dark:text-gray-200">
                       <input
                         type="checkbox"
                         checked={redeemEnabled}
@@ -834,25 +700,27 @@ export default function CheckoutPage() {
                 <button
                   type="submit"
                   disabled={items.length === 0 || pending || !addressReady}
-                  className="w-full rounded-full bg-primary py-3.5 text-base font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary-500 hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none"
+                  className="w-full rounded-full border-none bg-primary py-3.5 text-base font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
                 >
                   {pending ? t("submittingOrder") : t("confirmOrder")}
                 </button>
-              </form>
+                </form>
+                ) : null}
+              </div>
 
-              <aside className="h-fit rounded-3xl border border-stone-200 bg-stone-50 p-5 sm:p-6 lg:col-span-2">
-                <h2 className="text-lg font-extrabold">{t("orderSummary")}</h2>
+              <aside className="h-fit rounded-3xl border border-stone-200 bg-stone-50 p-5 sm:p-6 lg:col-span-2 dark:border-gray-800 dark:bg-gray-900">
+                <h2 className="text-lg font-extrabold dark:text-gray-100">{t("orderSummary")}</h2>
                 {items.length === 0 ? (
-                  <p className="mt-6 text-sm text-stone-500">{t("cartEmpty")}</p>
+                  <p className="mt-6 text-sm text-stone-500 dark:text-gray-400">{t("cartEmpty")}</p>
                 ) : (
-                  <ul className="mt-4 divide-y divide-stone-200">
+                  <ul className="mt-4 divide-y divide-stone-200 dark:divide-gray-800">
                     {(items || []).map((item) => (
                       <li key={item.id} className="flex items-start justify-between gap-3 py-3">
                         <div className="min-w-0">
-                          <p className="font-semibold leading-6">
+                          <p className="font-semibold leading-6 dark:text-gray-100">
                             {getLocalizedName(item, language)}
                           </p>
-                          <p className="mt-1 text-sm text-stone-500">
+                          <p className="mt-1 text-sm text-stone-500 dark:text-gray-400">
                             {formatQuantity(item.quantity, item.isWeighed === true)}
                             {item.isWeighed ? ` ${t("kilogram")}` : ""} × {item.price} {t("currency")}
                           </p>
@@ -864,15 +732,15 @@ export default function CheckoutPage() {
                     ))}
                   </ul>
                 )}
-                <dl className="mt-4 space-y-3 border-t border-stone-200 pt-4 text-sm">
+                <dl className="mt-4 space-y-3 border-t border-stone-200 pt-4 text-sm dark:border-gray-800 dark:text-gray-300">
                   <div className="flex items-center justify-between">
                     <dt>{t("subtotal")}</dt>
-                    <dd className="font-bold">
+                    <dd className="font-bold dark:text-gray-100">
                       {totalPrice} {t("currency")}
                     </dd>
                   </div>
                   {pointsDiscount > 0 ? (
-                    <div className="flex items-center justify-between text-primary-800">
+                    <div className="flex items-center justify-between text-primary-800 dark:text-gray-200">
                       <dt>{t("pointsDiscount")}</dt>
                       <dd className="font-bold">
                         -{formatPointsAmount(pointsDiscount)} {t("currency")}
@@ -881,11 +749,11 @@ export default function CheckoutPage() {
                   ) : null}
                   <div className="flex items-center justify-between">
                     <dt>{t("shippingFee")}</dt>
-                    <dd className={`font-bold ${shippingFee === 0 ? "text-emerald-700" : ""}`}>
+                    <dd className={`font-bold ${shippingFee === 0 ? "text-emerald-700 dark:text-emerald-400" : "dark:text-gray-100"}`}>
                       {deliveryFeeLabel(shippingFee)}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between text-base font-extrabold">
+                  <div className="flex items-center justify-between text-base font-extrabold dark:text-gray-100">
                     <dt>{t("finalTotal")}</dt>
                     <dd className="text-primary">
                       {finalTotal} {t("currency")}
@@ -893,7 +761,7 @@ export default function CheckoutPage() {
                   </div>
                 </dl>
                 {ready && items.length > 0 ? (
-                  <p className="mt-4 rounded-2xl bg-primary-50 px-3 py-2 text-sm font-bold text-primary-800">
+                  <p className="mt-4 rounded-2xl bg-primary-50 px-3 py-2 text-sm font-bold text-primary-800 dark:border dark:border-gray-700 dark:bg-gray-800 dark:text-emerald-400">
                     {t("earnOnOrder", { count: earnedPoints })}
                   </p>
                 ) : null}

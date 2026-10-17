@@ -111,7 +111,7 @@ export default function ProductGrid({
         className="mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6"
       >
         <h2 className="mb-4 text-xl font-extrabold sm:text-2xl">{t("searchResultsTitle")}</h2>
-        <p className="text-sm leading-7 text-stone-500">{t("searchPrompt")}</p>
+        <p className="text-sm leading-7 text-stone-500 dark:text-gray-400">{t("searchPrompt")}</p>
       </section>
     );
   }
@@ -130,11 +130,11 @@ export default function ProductGrid({
       <h2 className="mb-4 text-xl font-extrabold sm:text-2xl">{t(titleKey)}</h2>
       {isEmpty ? (
         <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
-          <SearchX className="h-16 w-16 text-stone-400" aria-hidden="true" />
-          <h3 className="mt-5 text-xl font-extrabold text-stone-900">
+          <SearchX className="h-16 w-16 text-stone-400 dark:text-gray-500" aria-hidden="true" />
+          <h3 className="mt-5 text-xl font-extrabold text-stone-900 dark:text-gray-100">
             {search ? t("noResultsFor", { query: search }) : t("emptyTitle")}
           </h3>
-          <p className="mt-2 max-w-md text-sm leading-7 text-stone-500">{t("emptySubtitle")}</p>
+          <p className="mt-2 max-w-md text-sm leading-7 text-stone-500 dark:text-gray-400">{t("emptySubtitle")}</p>
           <button
             type="button"
             onClick={() => router.push("/")}

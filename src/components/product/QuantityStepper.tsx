@@ -33,7 +33,7 @@ export default function QuantityStepper({ name, quantity, isWeighed, fluid = fal
           type="button"
           aria-label={t("decreaseQuantity", { name })}
           onClick={() => commit(quantity - step)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-700 transition hover:bg-primary-50 hover:text-primary"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-700 transition hover:bg-primary-50 hover:text-primary dark:text-gray-200"
         >
           <Minus className="h-4 w-4" />
         </button>
@@ -54,7 +54,7 @@ export default function QuantityStepper({ name, quantity, isWeighed, fluid = fal
 
             commit(parsed);
           }}
-          className={`h-8 rounded-full bg-transparent text-center text-sm font-bold text-stone-950 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+          className={`h-8 rounded-full bg-transparent text-center text-sm font-bold text-stone-950 outline-none [appearance:textfield] dark:bg-transparent dark:text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
             fluid ? "min-w-0 flex-1" : "w-16"
           }`}
         />
@@ -62,12 +62,12 @@ export default function QuantityStepper({ name, quantity, isWeighed, fluid = fal
           type="button"
           aria-label={t("increaseQuantity", { name })}
           onClick={() => commit(quantity + step)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-700 transition hover:bg-primary-50 hover:text-primary"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-700 transition hover:bg-primary-50 hover:text-primary dark:text-gray-200"
         >
           <Plus className="h-4 w-4" />
         </button>
       </div>
-      {isWeighed ? <span className="text-sm font-bold text-stone-500">{t("kilogram")}</span> : null}
+      {isWeighed ? <span className="text-sm font-bold text-stone-500 dark:text-gray-400">{t("kilogram")}</span> : null}
     </div>
   );
 }

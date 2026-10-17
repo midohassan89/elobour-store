@@ -16,7 +16,7 @@ export default function LanguageSwitcher() {
     <div
       role="group"
       aria-label={t("language")}
-      className="inline-flex rounded-full border border-stone-200 bg-white p-1"
+      className="inline-flex rounded-full border border-stone-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900"
     >
       {options.map((option) => {
         const active = language === option.id;
@@ -28,7 +28,7 @@ export default function LanguageSwitcher() {
             onClick={() => setLanguage(option.id)}
             aria-pressed={active}
             className={`rounded-full px-2.5 py-1 text-xs font-bold transition sm:px-3 sm:text-sm ${
-              active ? "bg-primary text-white" : "text-stone-600 hover:text-primary"
+              active ? "bg-primary text-white" : "text-stone-600 hover:text-primary dark:text-gray-400"
             }`}
           >
             {option.label}

@@ -14,7 +14,7 @@ function pillClassName(active: boolean) {
   return `shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${
     active
       ? "bg-primary text-white"
-      : "border border-stone-300 bg-white text-stone-600 hover:border-primary hover:text-primary"
+      : "border border-stone-300 dark:border-gray-700 bg-white text-stone-600 hover:border-primary hover:text-primary dark:bg-gray-900 dark:text-gray-400"
   }`;
 }
 
@@ -105,9 +105,9 @@ export default function BrandFilter() {
   }
 
   return (
-    <nav aria-label={t("brands")} className="border-b border-stone-200 bg-stone-50">
+    <nav aria-label={t("brands")} className="border-b border-stone-200 bg-stone-50 dark:border-gray-800 dark:bg-gray-900">
       <div className={scrollRowClassName}>
-        <span className="shrink-0 text-sm font-extrabold text-stone-800">{t("brands")}</span>
+        <span className="shrink-0 text-sm font-extrabold text-stone-800 dark:text-gray-100">{t("brands")}</span>
         <button
           type="button"
           onClick={() => selectBrand(null)}

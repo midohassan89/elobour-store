@@ -14,7 +14,7 @@ function pillClassName(active: boolean) {
   return `shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${
     active
       ? "bg-primary text-white"
-      : "border border-stone-300 bg-white text-stone-600 hover:border-primary hover:text-primary"
+      : "border border-stone-300 dark:border-gray-700 bg-white text-stone-600 hover:border-primary hover:text-primary dark:bg-gray-900 dark:text-gray-400"
   }`;
 }
 
@@ -94,7 +94,7 @@ export default function CategoryNav() {
   }
 
   return (
-    <nav aria-label={t("categories")} className="border-b border-stone-200 bg-white">
+    <nav aria-label={t("categories")} className="border-b border-stone-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div className={scrollRowClassName}>
         <button
           type="button"

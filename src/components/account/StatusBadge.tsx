@@ -50,7 +50,7 @@ function StatusBadge({ tone, fallback }: { tone: Tone | null; fallback: string }
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-extrabold ${
-        tone?.className ?? "bg-stone-100 text-stone-600"
+        tone?.className ?? "bg-stone-100 text-stone-600 dark:bg-gray-800 dark:text-gray-400"
       }`}
     >
       {Icon ? <Icon className="h-4 w-4 shrink-0" aria-hidden /> : null}

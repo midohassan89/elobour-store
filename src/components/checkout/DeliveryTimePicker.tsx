@@ -24,7 +24,7 @@ export function isDeliveryTimeAllowed(time: Date) {
 }
 
 const inputClassName =
-  "w-full cursor-pointer rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-base font-semibold text-stone-900 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-green-600 focus:ring-4 focus:ring-green-500";
+  "w-full cursor-pointer rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-base font-semibold text-stone-900 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-green-600 focus:ring-4 focus:ring-green-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500";
 
 const PickerInput = forwardRef<HTMLInputElement, { value?: string; onClick?: () => void; id?: string }>(
   function PickerInput({ value, onClick, id }, ref) {

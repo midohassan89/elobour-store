@@ -89,7 +89,7 @@ export default function OrderHistory() {
 
   if (!authReady || (user && loading)) {
     return (
-      <section className="mx-auto max-w-3xl px-4 py-16 text-center text-sm font-bold text-stone-500 sm:px-6">
+      <section className="mx-auto max-w-3xl px-4 py-16 text-center text-sm font-bold text-stone-500 sm:px-6 dark:text-gray-400">
         {t("loadingAccount")}
       </section>
     );
@@ -98,9 +98,9 @@ export default function OrderHistory() {
   if (!user) {
     return (
       <section className="mx-auto max-w-lg px-4 py-16 sm:px-6">
-        <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm sm:p-8">
+        <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm sm:p-8 dark:border-gray-800 dark:bg-gray-900">
           <h1 className="text-2xl font-extrabold text-stone-950">{t("profileLoginTitle")}</h1>
-          <p className="mt-2 text-sm leading-6 text-stone-600">{t("profileLoginBody")}</p>
+          <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-gray-400">{t("profileLoginBody")}</p>
           <button
             type="button"
             onClick={() => setLoginOpen(true)}
@@ -119,7 +119,7 @@ export default function OrderHistory() {
       <h1 className="mb-6 text-2xl font-extrabold text-stone-950 sm:text-3xl">{t("myOrders")}</h1>
       {loadError ? <p className="text-sm font-bold text-red-600">{t("accountLoadFailed")}</p> : null}
       {!loadError && orders.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500">
+        <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500 dark:border-gray-800 dark:text-gray-400">
           {t("ordersEmpty")}
         </p>
       ) : (

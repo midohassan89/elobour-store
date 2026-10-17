@@ -184,6 +184,7 @@ export type Dictionary = {
   returnStatusCompleted: string;
   returnStatusCancelled: string;
   addAddress: string;
+  editAddress: string;
   addressTitleLabel: string;
   addressStreetLabel: string;
   addressCityLabel: string;

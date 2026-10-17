@@ -58,7 +58,7 @@ export default function LoyaltyCardModal({ open, onClose }: LoyaltyCardModalProp
         role="dialog"
         aria-modal="true"
         aria-labelledby="loyalty-card-title"
-        className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-gray-900"
       >
         <div className="bg-gradient-to-br from-primary-700 via-primary to-primary-400 px-6 pb-8 pt-5 text-white">
           <button
@@ -79,7 +79,7 @@ export default function LoyaltyCardModal({ open, onClose }: LoyaltyCardModalProp
         </div>
 
         <div className="px-5 pb-6">
-          <div className="-mt-6 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
+          <div className="-mt-6 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <Barcode
               value={user.phone}
               format="CODE128"
@@ -92,7 +92,7 @@ export default function LoyaltyCardModal({ open, onClose }: LoyaltyCardModalProp
               fontSize={16}
             />
           </div>
-          <p className="mt-4 text-center text-sm font-semibold leading-7 text-stone-600">
+          <p className="mt-4 text-center text-sm font-semibold leading-7 text-stone-600 dark:text-gray-400">
             {t("loyaltyCardHint")}
           </p>
         </div>

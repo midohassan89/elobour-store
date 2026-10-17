@@ -168,7 +168,7 @@ export default function LiveSearch() {
         <button
           type="submit"
           aria-label={t("searchProducts")}
-          className="absolute start-1.5 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition hover:bg-primary-50 hover:text-primary sm:h-10 sm:w-10"
+          className="absolute start-1.5 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition hover:bg-primary-50 hover:text-primary sm:h-10 sm:w-10 dark:text-gray-500"
         >
           <Search aria-hidden="true" className="h-5 w-5" />
         </button>
@@ -202,16 +202,16 @@ export default function LiveSearch() {
             event.preventDefault();
             event.currentTarget.form?.requestSubmit();
           }}
-          className="h-12 w-full rounded-full border border-stone-200 bg-stone-50 ps-12 pe-4 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20 sm:h-14"
+          className="h-12 w-full rounded-full border border-stone-200 bg-stone-50 ps-12 pe-4 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/20 sm:h-14 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:bg-gray-900"
         />
       </form>
 
       {showResults ? (
-        <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-2xl bg-white shadow-lg ring-1 ring-stone-200">
+        <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-2xl bg-white shadow-lg ring-1 ring-stone-200 dark:bg-gray-900 dark:ring-gray-800">
           {loading ? (
-            <p className="px-4 py-3 text-sm text-stone-500">{t("searching")}</p>
+            <p className="px-4 py-3 text-sm text-stone-500 dark:text-gray-400">{t("searching")}</p>
           ) : results.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-stone-500">{t("noResults")}</p>
+            <p className="px-4 py-3 text-sm text-stone-500 dark:text-gray-400">{t("noResults")}</p>
           ) : (
             <ul>
               {results.map((product) => {
@@ -224,9 +224,9 @@ export default function LiveSearch() {
                 return (
                   <li
                     key={product.id}
-                    className="flex items-center gap-3 border-b border-stone-100 px-3 py-2 last:border-b-0"
+                    className="flex items-center gap-3 border-b border-stone-100 px-3 py-2 last:border-b-0 dark:border-gray-800"
                   >
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-stone-100">
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-stone-100 dark:bg-gray-800">
                       {imageUrl ? (
                         <Image
                           src={imageUrl}
@@ -239,13 +239,13 @@ export default function LiveSearch() {
                       ) : null}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-stone-900">{localizedName}</p>
+                      <p className="truncate text-sm font-bold text-stone-900 dark:text-gray-100">{localizedName}</p>
                       {hasSale ? (
                         <p className="flex flex-wrap items-baseline gap-2">
                           <span className="text-sm font-extrabold text-primary">
                             {salePrice} {t("currency")}
                           </span>
-                          <span className="text-xs text-gray-500 line-through">
+                          <span className="text-xs text-gray-500 line-through dark:text-gray-400">
                             {product.price} {t("currency")}
                           </span>
                         </p>

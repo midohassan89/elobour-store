@@ -138,7 +138,7 @@ export default function ReturnRequestModal({ order, onClose, onSuccess }: Return
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-950/40 p-4 sm:items-center">
       <form
         onSubmit={(event) => void submitReturn(event)}
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-xl"
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-xl dark:bg-gray-900"
         role="dialog"
         aria-modal="true"
         aria-labelledby="return-title"
@@ -146,16 +146,16 @@ export default function ReturnRequestModal({ order, onClose, onSuccess }: Return
         <h2 id="return-title" className="text-xl font-extrabold text-stone-950">
           {t("requestReturn")}
         </h2>
-        <p className="mt-1 text-sm text-stone-500">{t("returnSelectItems")}</p>
+        <p className="mt-1 text-sm text-stone-500 dark:text-gray-400">{t("returnSelectItems")}</p>
         <ul className="mt-4 space-y-3">
           {order.items.map((item) => {
             const remaining = Math.max(0, item.quantity - reservedQuantity(returns, item.id));
             const quantity = quantities[item.id] ?? 0;
 
             return (
-              <li key={item.id} className="rounded-2xl border border-stone-200 p-3">
-                <p className="font-bold text-stone-900">{item.productName}</p>
-                <p className="mt-1 text-xs font-semibold text-stone-500">
+              <li key={item.id} className="rounded-2xl border border-stone-200 p-3 dark:border-gray-800">
+                <p className="font-bold text-stone-900 dark:text-gray-100">{item.productName}</p>
+                <p className="mt-1 text-xs font-semibold text-stone-500 dark:text-gray-400">
                   {t("returnPurchased")}: {item.quantity}
                 </p>
                 <div className="mt-3 flex items-center gap-2">
@@ -177,7 +177,7 @@ export default function ReturnRequestModal({ order, onClose, onSuccess }: Return
                     onChange={(event) => setQuantity(item.id, remaining, Number(event.target.value))}
                     disabled={loading || remaining === 0}
                     aria-label={t("returnQuantity")}
-                    className="h-10 w-20 rounded-2xl border border-stone-200 text-center text-base font-extrabold text-stone-950 outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 disabled:bg-stone-50"
+                    className="h-10 w-20 rounded-2xl border border-stone-200 text-center text-base font-extrabold text-stone-950 outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 disabled:bg-stone-50 dark:border-gray-800"
                   />
                   <button
                     type="button"
@@ -205,7 +205,7 @@ export default function ReturnRequestModal({ order, onClose, onSuccess }: Return
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-stone-300 px-5 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50"
+            className="rounded-full border border-stone-300 dark:border-gray-700 px-5 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 dark:text-gray-400 dark:hover:bg-gray-800"
           >
             {t("cancel")}
           </button>

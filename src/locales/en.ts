@@ -174,6 +174,7 @@ const en: Dictionary = {
   returnStatusCompleted: "Received successfully",
   returnStatusCancelled: "Cancelled",
   addAddress: "Add an address",
+  editAddress: "Edit address",
   addressTitleLabel: "Address name",
   addressStreetLabel: "Street",
   addressCityLabel: "City",

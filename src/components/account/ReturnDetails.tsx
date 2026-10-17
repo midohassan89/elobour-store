@@ -84,7 +84,7 @@ export default function ReturnDetails() {
 
   if (!authReady || (user && loading)) {
     return (
-      <section className="mx-auto max-w-3xl px-4 py-16 text-center text-sm font-bold text-stone-500 sm:px-6">
+      <section className="mx-auto max-w-3xl px-4 py-16 text-center text-sm font-bold text-stone-500 sm:px-6 dark:text-gray-400">
         {t("loadingAccount")}
       </section>
     );
@@ -93,9 +93,9 @@ export default function ReturnDetails() {
   if (!user) {
     return (
       <section className="mx-auto max-w-lg px-4 py-16 sm:px-6">
-        <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm sm:p-8">
+        <div className="rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-sm sm:p-8 dark:border-gray-800 dark:bg-gray-900">
           <h1 className="text-2xl font-extrabold text-stone-950">{t("profileLoginTitle")}</h1>
-          <p className="mt-2 text-sm leading-6 text-stone-600">{t("profileLoginBody")}</p>
+          <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-gray-400">{t("profileLoginBody")}</p>
           <button
             type="button"
             onClick={() => setLoginOpen(true)}
@@ -118,13 +118,13 @@ export default function ReturnDetails() {
       </Link>
 
       {loadError ? <p className="mt-6 text-sm font-bold text-red-600">{t("accountLoadFailed")}</p> : null}
-      {missing ? <p className="mt-6 text-sm font-bold text-stone-500">{t("returnNotFound")}</p> : null}
+      {missing ? <p className="mt-6 text-sm font-bold text-stone-500 dark:text-gray-400">{t("returnNotFound")}</p> : null}
 
       {request ? (
-        <article className="mt-4 rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+        <article className="mt-4 rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6 dark:border-gray-800 dark:bg-gray-900">
           <h1 className="text-2xl font-extrabold text-stone-950">#{request.orderId.slice(-6)}</h1>
           {created && !Number.isNaN(created.getTime()) ? (
-            <p className="mt-1 text-xs font-semibold text-stone-500">
+            <p className="mt-1 text-xs font-semibold text-stone-500 dark:text-gray-400">
               {created.toLocaleString(locale, {
                 year: "numeric",
                 month: "short",
@@ -132,10 +132,10 @@ export default function ReturnDetails() {
               })}
             </p>
           ) : null}
-          <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+          <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-gray-800 dark:bg-gray-900">
             <TimelineStepper steps={returnSteps} {...returnTimeline(request.status)} />
           </div>
-          <ul className="mt-4 space-y-2 text-sm text-stone-700">
+          <ul className="mt-4 space-y-2 text-sm text-stone-700 dark:text-gray-200">
             {request.items.map((item) => (
               <li key={item.id}>
                 {item.productName} × {item.quantity}
