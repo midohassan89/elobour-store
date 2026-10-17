@@ -1,3 +1,4 @@
+import { getNormalizedUrl } from "@/utils/productImage";
 import Image from "next/image";
 
 type SafeImageProps = {
@@ -17,9 +18,11 @@ export default function SafeImage({
   className,
   priority = false,
 }: SafeImageProps) {
+  const imageSrc = getNormalizedUrl(src);
+
   return (
     <Image
-      src={src}
+      src={imageSrc}
       alt={alt}
       width={width}
       height={height}
