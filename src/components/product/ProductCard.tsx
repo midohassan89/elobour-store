@@ -9,8 +9,10 @@ import { getLocalizedName } from "@/utils/localizedName";
 import { resolveProductImage } from "@/utils/productImage";
 import { quantityStep } from "@/utils/quantity";
 import SafeImage from "@/components/ui/SafeImage";
+import { useWishlist } from "@/components/wishlist/WishlistProvider";
 import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import { ShoppingBag } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -168,6 +170,8 @@ export default function ProductCard({
   priority = false,
 }: ProductCardProps) {
   const { t, language } = useI18n();
+  const { ids: wishlistIds, toggle: toggleWishlist } = useWishlist();
+  const wished = wishlistIds.includes(id);
   const { earnRatio, ready } = useLoyaltySettings();
   const localizedName = getLocalizedName({ name, nameEn, nameZh }, language);
   const brandName = brand ? getLocalizedName(brand, language) : "";
@@ -213,6 +217,15 @@ export default function ProductCard({
             <ShoppingBag className="h-12 w-12 text-gray-300 stroke-[1.5] dark:text-gray-600" aria-hidden="true" />
           </div>
         )}
+        <button
+          type="button"
+          aria-pressed={wished}
+          aria-label={t("wishlist")}
+          onClick={() => void toggleWishlist(id)}
+          className="absolute start-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-lg shadow-sm transition hover:bg-white dark:bg-gray-900/90"
+        >
+          {wished ? "❤️" : "♡"}
+        </button>
         {isOutOfStock ? (
           <span className="absolute top-2 right-2 rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
             {t("outOfStock")}
@@ -221,7 +234,9 @@ export default function ProductCard({
       </div>
       <div className="flex flex-1 flex-col p-4">
       <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-stone-900 sm:text-base dark:text-gray-100">
-        {localizedName}
+        <Link href={`/product/${id}`} className="hover:text-primary">
+          {localizedName}
+        </Link>
       </h3>
       {brandName ? (
         <p className="mt-1 text-xs font-medium text-stone-400 dark:text-gray-500">{brandName}</p>

@@ -5,6 +5,8 @@ import OrderCards from "@/components/account/OrderCards";
 import { ReturnStatusBadge } from "@/components/account/StatusBadge";
 import LoginModal from "@/components/auth/LoginModal";
 import { useI18n } from "@/components/i18n/LanguageProvider";
+import ProductCard from "@/components/product/ProductCard";
+import { useWishlist } from "@/components/wishlist/WishlistProvider";
 import type { AccountAddress, AccountReturnRequest } from "@/lib/accountData";
 import { useAuthStore } from "@/store/authStore";
 import { maskPhone } from "@/utils/maskPhone";
@@ -39,7 +41,8 @@ export default function ProfileAccount() {
   const authReady = useAuthStore((state) => state.ready);
   const hydrate = useAuthStore((state) => state.hydrate);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [tab, setTab] = useState<"orders" | "returns" | "addresses">("orders");
+  const [tab, setTab] = useState<"orders" | "returns" | "addresses" | "wishlist">("orders");
+  const { products: wishlistProducts } = useWishlist();
   const [orders, setOrders] = useState<AccountOrder[]>([]);
   const [returns, setReturns] = useState<AccountReturnRequest[]>([]);
   const [addresses, setAddresses] = useState<AccountAddress[]>([]);
@@ -62,7 +65,7 @@ export default function ProfileAccount() {
 
   useEffect(() => {
     const next = new URLSearchParams(window.location.search).get("tab");
-    if (next === "orders" || next === "returns" || next === "addresses") {
+    if (next === "orders" || next === "returns" || next === "addresses" || next === "wishlist") {
       setTab(next);
     }
   }, []);
@@ -227,7 +230,7 @@ export default function ProfileAccount() {
         <p className="mt-1 text-sm font-bold text-stone-500 dark:text-gray-400">{maskPhone(user.phone)}</p>
       </header>
 
-      <div className="mb-6 grid grid-cols-3 gap-1 rounded-2xl bg-stone-100 p-1 dark:bg-gray-800" role="tablist">
+      <div className="mb-6 grid grid-cols-2 gap-1 rounded-2xl bg-stone-100 p-1 sm:grid-cols-4 dark:bg-gray-800" role="tablist">
         <button type="button" role="tab" aria-selected={tab === "orders"} onClick={() => setTab("orders")} className={tabClassName(tab === "orders")}>
           {t("myOrders")}
         </button>
@@ -236,6 +239,9 @@ export default function ProfileAccount() {
         </button>
         <button type="button" role="tab" aria-selected={tab === "addresses"} onClick={() => setTab("addresses")} className={tabClassName(tab === "addresses")}>
           {t("myAddresses")}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === "wishlist"} onClick={() => setTab("wishlist")} className={tabClassName(tab === "wishlist")}>
+          {t("wishlist")}
         </button>
       </div>
 
@@ -362,6 +368,20 @@ export default function ProfileAccount() {
             }
           />
         </div>
+      ) : null}
+
+      {tab === "wishlist" && !loading ? (
+        wishlistProducts.length === 0 ? (
+          <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500 dark:border-gray-800 dark:text-gray-400">
+            {t("wishlistEmpty")}
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {wishlistProducts.map((product) => (
+              <ProductCard key={product.id} {...product} image={product.image ?? ""} />
+            ))}
+          </div>
+        )
       ) : null}
     </section>
   );

@@ -10,6 +10,7 @@ import { useState } from "react";
 
 export type OrderCardData = {
   id: string;
+  orderNumber?: string | null;
   address: string;
   totalAmount: number;
   status: string;
@@ -47,7 +48,7 @@ export default function OrderCards({ orders, cancellingId, cancelErrorId, onCanc
         return (
           <article key={order.id} className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-extrabold text-stone-900 dark:text-gray-100">#{order.id.slice(-6)}</span>
+              <span className="text-sm font-extrabold text-stone-900 dark:text-gray-100">{order.orderNumber || `#${order.id.slice(-6)}`}</span>
               <OrderStatusBadge status={order.status} />
             </div>
             {created && !Number.isNaN(created.getTime()) ? (

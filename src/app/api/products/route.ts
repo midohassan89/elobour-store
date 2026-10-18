@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
   try {
+    const productId = request.nextUrl.searchParams.get("id")?.trim() ?? "";
     const categoryId = request.nextUrl.searchParams.get("categoryId")?.trim() ?? "";
     const brandId = request.nextUrl.searchParams.get("brandId")?.trim() ?? "";
     const search = request.nextUrl.searchParams.get("search")?.trim() ?? "";
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
 
     const where = {
       isActive: true,
+      ...(productId ? { id: productId } : {}),
       // Temporarily include soft-deleted rows so the catalog is never empty during sync.
       ...(categoryId ? { categoryId } : {}),
       ...(brandId ? { brandId } : {}),

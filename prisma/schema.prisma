@@ -96,6 +96,7 @@ model Product {
   openingBalanceItems OpeningBalanceItem[]
   orderItems          OrderItem[]
   packages            ProductPackage[]
+  wishlistItems       WishlistItem[]
 
   @@index([barcode])
   @@index([sku])
@@ -531,6 +532,10 @@ model Customer {
 
   pointsTransactions PointsTransaction[]
   orders             Order[]
+  customerAddresses  CustomerAddress[]
+  wishlistItems      WishlistItem[]
+  notifications      CustomerNotification[]
+  chatMessages       ChatMessage[]
 }
 
 model PointsTransaction {
@@ -552,6 +557,8 @@ model Order {
   customerName   String
   phone          String
   address        String
+  /** Readable number such as WEB-1001 or APP-1001. */
+  orderNumber    String?     @unique
   notes          String?
   totalAmount    Float
   status         String      @default("PENDING")
@@ -587,6 +594,7 @@ model DeliveryZone {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  customerAddresses CustomerAddress[]
 
   @@index([isActive])
 }
@@ -621,4 +629,83 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+/// Saved delivery address shared by the website and the mobile app.
+model CustomerAddress {
+  id             String   @id @default(cuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /** e.g. Home, Work. Exposed to clients as `label`. */
+  title          String
+  recipientName  String?
+  fullAddress    String
+  details        String?
+  phone          String?
+  deliveryZoneId String?
+  deliveryZone   DeliveryZone? @relation(fields: [deliveryZoneId], references: [id], onDelete: SetNull)
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([customerId, isDefault])
+  @@index([deliveryZoneId])
+}
+
+/// One counter per channel so APP / WEB / POS numbers stay sequential.
+model OrderNumberCounter {
+  channel   String @id
+  nextValue Int    @default(1001)
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+}
+
+model CustomerNotification {
+  id         String    @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  titleAr    String
+  titleEn    String    @default("")
+  titleZh    String    @default("")
+  bodyAr     String
+  bodyEn     String    @default("")
+  bodyZh     String    @default("")
+  /** GENERAL | ORDER | BROADCAST */
+  type       String    @default("GENERAL")
+  orderId    String?
+  isRead     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([orderId])
+}
+
+model ChatMessage {
+  id               String   @id @default(cuid())
+  customerId       String
+  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /** CUSTOMER | ADMIN */
+  senderRole       String
+  originalText     String
+  /** ar | en | zh */
+  originalLang     String
+  textAr           String
+  textEn           String
+  textZh           String
+  isReadByAdmin    Boolean  @default(false)
+  isReadByCustomer Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([customerId, createdAt])
 }

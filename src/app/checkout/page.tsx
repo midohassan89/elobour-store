@@ -12,6 +12,7 @@ import Header from "@/components/layout/Header";
 import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
+import { formatEstimatedTime } from "@/utils/estimatedTime";
 import { getLocalizedName } from "@/utils/localizedName";
 import { formatQuantity } from "@/utils/quantity";
 import {
@@ -800,7 +801,7 @@ export default function CheckoutPage() {
                   <p className="mb-2 block text-sm font-bold text-stone-900 dark:text-gray-100">{t("deliveryTime")}</p>
                   {selectedZone?.estimatedTime ? (
                     <p className="mb-3 text-sm font-bold text-stone-600 dark:text-gray-300">
-                      {t("estimatedArrival", { time: selectedZone.estimatedTime })}
+                      {t("estimatedArrival", { time: formatEstimatedTime(selectedZone.estimatedTime, language) })}
                     </p>
                   ) : null}
                   {belowMinOrder && selectedZone ? (

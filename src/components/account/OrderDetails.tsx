@@ -139,7 +139,7 @@ export default function OrderDetails() {
 
       {order ? (
         <article className="mt-4 rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6 dark:border-gray-800 dark:bg-gray-900">
-          <h1 className="text-2xl font-extrabold text-stone-950">#{order.id.slice(-6)}</h1>
+          <h1 className="text-2xl font-extrabold text-stone-950 dark:text-gray-100">{order.orderNumber || `#${order.id.slice(-6)}`}</h1>
           {created && !Number.isNaN(created.getTime()) ? (
             <p className="mt-1 text-xs font-semibold text-stone-500 dark:text-gray-400">
               {created.toLocaleString(locale, {

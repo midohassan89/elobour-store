@@ -8,7 +8,9 @@ import LoyaltyCardModal from "@/components/loyalty/LoyaltyCardModal";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import CartDrawer from "@/components/cart/CartDrawer";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import { useWishlist } from "@/components/wishlist/WishlistProvider";
 import LiveSearch from "@/components/layout/LiveSearch";
 import type { Category } from "@/types";
 import { useAuthStore } from "@/store/authStore";
@@ -27,6 +29,7 @@ export default function Navbar() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const wishlistCount = useWishlist().ids.length;
   const itemCount = useCartStore((state) =>
     state.items.reduce((count, item) => count + item.quantity, 0),
   );
@@ -195,6 +198,19 @@ export default function Navbar() {
           ) : null}
           <LanguageSwitcher />
           <ThemeToggle />
+          {user ? (
+            <Link
+              href="/account?tab=wishlist"
+              aria-label={t("wishlistWithCount", { count: wishlistCount })}
+              className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-stone-200 text-lg text-stone-800 transition hover:border-primary hover:text-primary dark:border-gray-800 dark:text-gray-100"
+            >
+              {wishlistCount > 0 ? "❤️" : "♡"}
+              <span className="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-white dark:text-white">
+                {wishlistCount}
+              </span>
+            </Link>
+          ) : null}
+          <NotificationBell />
           <button
             type="button"
             onClick={() => setCartOpen(true)}

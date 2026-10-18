@@ -2,6 +2,7 @@
 
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import type { Language } from "@/locales/types";
+import { formatEstimatedTime } from "@/utils/estimatedTime";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 
 export type AddressZone = {
@@ -281,7 +282,7 @@ export default function AddressForm({
           {zoneOptions.map((zone) => (
             <option key={zone.id} value={zone.id}>
               {zoneLabel(zone, language)}
-              {zone.estimatedTime ? ` · ${zone.estimatedTime}` : ""}
+              {zone.estimatedTime ? ` · ${formatEstimatedTime(zone.estimatedTime, language)}` : ""}
             </option>
           ))}
         </select>

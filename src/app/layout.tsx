@@ -1,4 +1,6 @@
+import LiveChatWidget from "@/components/chat/LiveChatWidget";
 import { LanguageProvider } from "@/components/i18n/LanguageProvider";
+import { WishlistProvider } from "@/components/wishlist/WishlistProvider";
 import { dictionaries } from "@/locales";
 import { directionFor, isLanguage, type Language } from "@/locales/types";
 import type { Metadata } from "next";
@@ -39,8 +41,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col bg-white text-stone-900 transition-colors dark:bg-gray-950 dark:text-gray-100">
         <LanguageProvider initialLanguage={language}>
-          {children}
-          <Toaster position="bottom-center" />
+          <WishlistProvider>
+            {children}
+            <LiveChatWidget />
+            <Toaster position="bottom-center" />
+          </WishlistProvider>
         </LanguageProvider>
       </body>
     </html>

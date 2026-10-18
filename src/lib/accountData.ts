@@ -12,6 +12,7 @@ export type AccountOrderItem = {
 
 export type AccountOrder = {
   id: string;
+  orderNumber: string | null;
   address: string;
   totalAmount: number;
   status: string;
@@ -105,8 +106,14 @@ export async function listCustomerOrders(customerId: string): Promise<AccountOrd
     returnRequestsByOrder.set(row.orderId, current);
   }
 
+  const numberRows = await prisma.$queryRaw<Array<{ id: string; orderNumber: string | null }>>`
+    SELECT id, orderNumber FROM "Order" WHERE customerId = ${customerId}
+  `;
+  const orderNumbers = new Map(numberRows.map((row) => [row.id, row.orderNumber]));
+
   return orders.map((order) => ({
     id: order.id,
+    orderNumber: orderNumbers.get(order.id) ?? null,
     address: order.address,
     totalAmount: order.totalAmount,
     status: order.status,
@@ -513,8 +520,13 @@ export async function getCustomerOrder(customerId: string, orderId: string): Pro
 
   const returns = groupReturnRows(rows);
 
+  const numberRows = await prisma.$queryRaw<Array<{ orderNumber: string | null }>>`
+    SELECT orderNumber FROM "Order" WHERE id = ${order.id} LIMIT 1
+  `;
+
   return {
     id: order.id,
+    orderNumber: numberRows[0]?.orderNumber ?? null,
     address: order.address,
     totalAmount: order.totalAmount,
     status: order.status,

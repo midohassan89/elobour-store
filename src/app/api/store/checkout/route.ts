@@ -301,9 +301,19 @@ export async function POST(request: Request) {
           }
         }
 
+        const counters = await tx.$queryRaw<Array<{ nextValue: number | bigint }>>`
+          INSERT INTO OrderNumberCounter (channel, nextValue)
+          VALUES ('WEB', 1002)
+          ON CONFLICT(channel) DO UPDATE SET nextValue = nextValue + 1
+          RETURNING nextValue
+        `;
+        const issued = Number(counters[0]?.nextValue ?? 1002) - 1;
+        const orderNumber = `WEB-${issued}`;
+
         await tx.$executeRaw`
           UPDATE "Order"
           SET
+            orderNumber = ${orderNumber},
             deliveryTime = ${isAsap ? null : deliveryTime},
             pointsDiscount = ${pointsDiscount},
             couponCode = ${couponCode || null},

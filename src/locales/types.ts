@@ -160,6 +160,15 @@ export type Dictionary = {
   myOrders: string;
   myReturns: string;
   myAddresses: string;
+  wishlist: string;
+  wishlistEmpty: string;
+  wishlistWithCount: string;
+  notifications: string;
+  noNotifications: string;
+  liveChat: string;
+  chatPlaceholder: string;
+  chatSend: string;
+  loginToWishlist: string;
   returnsEmpty: string;
   ordersEmpty: string;
   addressesEmpty: string;
