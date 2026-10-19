@@ -116,9 +116,10 @@ export default function LiveChatWidget() {
         type="button"
         onClick={() => setOpen((current) => !current)}
         aria-label={t("liveChat")}
-        className="ms-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition hover:bg-primary/90"
+        className="ms-auto flex h-14 items-center gap-2 rounded-full bg-primary px-4 text-white shadow-2xl ring-4 ring-primary/20 transition hover:bg-primary/90"
       >
-        <MessageCircle className="h-7 w-7" />
+        <MessageCircle className="h-6 w-6" />
+        <span className="text-sm font-extrabold">{t("liveChat")}</span>
       </button>
     </div>
   );

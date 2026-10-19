@@ -1,6 +1,7 @@
 import BrandCarousel from "@/components/brand/BrandCarousel";
 import CategoryGrid from "@/components/category/CategoryGrid";
 import HeroBanner from "@/components/home/HeroBanner";
+import HomeRails from "@/components/home/HomeRails";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import ProductGrid from "@/components/product/ProductGrid";
@@ -17,9 +18,10 @@ export default function Home() {
         </div>
         <CategoryGrid />
         <BrandCarousel />
+        <HomeRails />
 
         <Suspense fallback={<ProductGridSkeleton />}>
-          <ProductGrid titleKey="featuredProducts" />
+          <ProductGrid titleKey="featuredProducts" showSort />
         </Suspense>
       </main>
       <Footer />

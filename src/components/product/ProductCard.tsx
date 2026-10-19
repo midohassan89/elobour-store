@@ -2,7 +2,7 @@
 
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import QuantityStepper from "@/components/product/QuantityStepper";
-import { useCartStore } from "@/store/cartStore";
+import { cartLineKey, useCartStore } from "@/store/cartStore";
 import type { Language } from "@/locales/types";
 import type { ProductPackage } from "@/types";
 import { getLocalizedName } from "@/utils/localizedName";
@@ -176,6 +176,7 @@ export default function ProductCard({
   const localizedName = getLocalizedName({ name, nameEn, nameZh }, language);
   const brandName = brand ? getLocalizedName(brand, language) : "";
   const addItem = useCartStore((state) => state.addItem);
+  const updateQuantity = useCartStore((state) => state.updateQuantity);
   const [quantity, setQuantity] = useState(quantityStep(isWeighed));
   const isOutOfStock = stock !== undefined && stock <= 0;
   const hasSale = salePrice != null && salePrice > 0;
@@ -193,6 +194,13 @@ export default function ProductCard({
       : Math.round(basePrice * selectedOption.itemsCount * 100) / 100;
   const earnedPoints = Math.floor(displayPrice * earnRatio);
   const baseUnitLabel = baseUnitNameForLocale(language, unit, unitEn, unitZh);
+  const packageId = selectedOption === "base" ? undefined : selectedOption.id;
+  const lineKey = cartLineKey(id, packageId);
+  const cartQuantity = useCartStore(
+    (state) => state.items.find((item) => item.lineKey === lineKey)?.quantity ?? 0,
+  );
+  const discountPercent =
+    hasSale && regularPrice > 0 ? Math.round((1 - (salePrice as number) / regularPrice) * 100) : 0;
 
   useEffect(() => {
     console.log("Current Ratio in UI:", earnRatio);
@@ -201,8 +209,9 @@ export default function ProductCard({
   const imageUrl = resolveProductImage(image);
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
-      <div className="relative aspect-square overflow-hidden">
+    <article className="flex h-full flex-col overflow-visible rounded-xl border border-stone-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
+      <div className="relative aspect-square">
+        <div className="absolute inset-0 overflow-hidden">
         {imageUrl ? (
           <SafeImage
             src={imageUrl}
@@ -217,18 +226,23 @@ export default function ProductCard({
             <ShoppingBag className="h-12 w-12 text-gray-300 stroke-[1.5] dark:text-gray-600" aria-hidden="true" />
           </div>
         )}
+        </div>
         <button
           type="button"
           aria-pressed={wished}
           aria-label={t("wishlist")}
           onClick={() => void toggleWishlist(id)}
-          className="absolute start-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-lg shadow-sm transition hover:bg-white dark:bg-gray-900/90"
+          className="absolute end-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-lg shadow-sm transition hover:bg-white dark:bg-gray-900/90"
         >
           {wished ? "❤️" : "♡"}
         </button>
         {isOutOfStock ? (
-          <span className="absolute top-2 right-2 rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
+          <span className="absolute start-2 top-2 z-10 whitespace-nowrap rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
             {t("outOfStock")}
+          </span>
+        ) : discountPercent > 0 ? (
+          <span className="absolute start-2 top-2 z-10 whitespace-nowrap rounded-full bg-primary px-2.5 py-1 text-xs font-bold text-white">
+            -{discountPercent}%
           </span>
         ) : null}
       </div>
@@ -315,33 +329,45 @@ export default function ProductCard({
           {t("earnPoints", { count: earnedPoints })}
         </p>
       ) : null}
-      {isWeighed ? (
+      {cartQuantity > 0 ? (
         <QuantityStepper
           name={localizedName}
-          quantity={quantity}
-          isWeighed
+          quantity={cartQuantity}
+          isWeighed={isWeighed && !packageId}
           fluid
-          onChange={(next) => setQuantity(next < quantityStep(true) ? quantityStep(true) : next)}
+          onChange={(next) => updateQuantity(lineKey, next)}
         />
-      ) : null}
-      <button
-        type="button"
-        disabled={isOutOfStock}
-        onClick={() => {
-          addItem(
-            { id, name, nameEn, nameZh, price: displayPrice, isWeighed, image },
-            isWeighed ? quantity : 1,
-          );
-          toast.success(t("addedToCart"));
-        }}
-        className={`w-full rounded-full px-3 py-2.5 text-sm font-bold text-white ${
-          isOutOfStock
-            ? "cursor-not-allowed bg-gray-400"
-            : "bg-primary transition duration-200 hover:-translate-y-0.5 hover:bg-primary-500 hover:shadow-lg active:translate-y-0"
-        }`}
-      >
-        {isOutOfStock ? t("outOfStock") : t("addToCart")}
-      </button>
+      ) : (
+        <>
+          {isWeighed && !packageId ? (
+            <QuantityStepper
+              name={localizedName}
+              quantity={quantity}
+              isWeighed
+              fluid
+              onChange={(next) => setQuantity(next < quantityStep(true) ? quantityStep(true) : next)}
+            />
+          ) : null}
+          <button
+            type="button"
+            disabled={isOutOfStock}
+            onClick={() => {
+              addItem(
+                { id, name, nameEn, nameZh, price: displayPrice, isWeighed: isWeighed && !packageId, image, packageId, lineKey },
+                isWeighed && !packageId ? quantity : 1,
+              );
+              toast.success(t("addedToCart"));
+            }}
+            className={`w-full rounded-full px-3 py-2.5 text-sm font-bold text-white ${
+              isOutOfStock
+                ? "cursor-not-allowed bg-gray-400"
+                : "bg-primary transition duration-200 hover:-translate-y-0.5 hover:bg-primary-500 hover:shadow-lg active:translate-y-0"
+            }`}
+          >
+            {isOutOfStock ? t("outOfStock") : t("addToCart")}
+          </button>
+        </>
+      )}
       </div>
     </article>
   );

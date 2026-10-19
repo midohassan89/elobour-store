@@ -5,6 +5,7 @@ import type { Brand } from "@/types";
 import { brandImageUrl } from "@/utils/brandVisual";
 import { getLocalizedName, optionalLocalizedName } from "@/utils/localizedName";
 import { uniqueByArabicName } from "@/utils/uniqueByName";
+import { Store } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -12,7 +13,7 @@ function BrandLogo({ imageUrl, label }: { imageUrl: string; label: string }) {
   const [failed, setFailed] = useState(false);
 
   if (!imageUrl || failed) {
-    return <span className="text-2xl font-bold text-gray-400 dark:text-gray-500">{label.slice(0, 1)}</span>;
+    return <Store className="h-5 w-5 text-primary" aria-hidden="true" />;
   }
 
   return (
@@ -21,7 +22,7 @@ function BrandLogo({ imageUrl, label }: { imageUrl: string; label: string }) {
     <img
       src={imageUrl}
       alt=""
-      className="h-12 w-12 object-contain"
+      className="h-8 w-8 object-contain"
       onError={() => setFailed(true)}
     />
   );
@@ -98,7 +99,7 @@ export default function BrandCarousel() {
           className="absolute -bottom-2 start-0 h-1 w-10 rounded-full bg-green-600"
         />
       </h2>
-      <div className="flex gap-6 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-3 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {brands.map((brand) => {
           const imageUrl = brandImageUrl(brand.image);
           const label = getLocalizedName(brand, language);
@@ -107,12 +108,12 @@ export default function BrandCarousel() {
             <Link
               key={brand.id}
               href={`/shop?brandId=${encodeURIComponent(brand.id)}`}
-              className="flex shrink-0 cursor-pointer flex-col items-center"
+              className="flex shrink-0 items-center gap-3 rounded-full border border-gray-200 bg-white px-3 py-2 shadow-sm transition hover:border-primary hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
             >
-              <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 shadow-sm transition-colors hover:border-green-400 hover:bg-green-50 dark:border-gray-800 dark:bg-gray-900">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50">
                 <BrandLogo imageUrl={imageUrl} label={label} />
               </span>
-              <span className="mt-2 w-20 truncate text-center text-xs font-medium text-gray-600 dark:text-gray-400">
+              <span className="max-w-40 text-sm font-extrabold leading-5 text-gray-800 dark:text-gray-100">
                 {label}
               </span>
             </Link>

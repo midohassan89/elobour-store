@@ -109,7 +109,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
                 return (
                 <li
-                  key={item.id}
+                  key={item.lineKey}
                   className="flex items-center gap-3 border-b border-stone-100 py-4 dark:border-gray-800"
                 >
                   <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 dark:bg-gray-800">
@@ -134,13 +134,13 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                     name={localizedName}
                     quantity={item.quantity}
                     isWeighed={item.isWeighed === true}
-                    onChange={(next) => updateQuantity(item.id, next)}
+                    onChange={(next) => updateQuantity(item.lineKey, next)}
                   />
 
                   <button
                     type="button"
                     aria-label={t("removeItem", { name: localizedName })}
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => removeItem(item.lineKey)}
                     className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition hover:bg-red-50 hover:text-red-600 dark:text-gray-400"
                   >
                     <Trash className="h-4 w-4" />

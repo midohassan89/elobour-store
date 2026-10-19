@@ -161,11 +161,17 @@ export async function getProducts({
   brandId,
   search,
   page = 1,
+  sort,
+  offers,
+  limit,
 }: {
   categoryId?: string;
   brandId?: string;
   search?: string;
   page?: number;
+  sort?: "price_asc" | "price_desc" | "instock";
+  offers?: boolean;
+  limit?: number;
 } = {}): Promise<ProductsResponse> {
   const params = new URLSearchParams({ page: String(page) });
 
@@ -179,6 +185,18 @@ export async function getProducts({
 
   if (search) {
     params.set("search", search);
+  }
+
+  if (sort) {
+    params.set("sort", sort);
+  }
+
+  if (offers) {
+    params.set("offers", "1");
+  }
+
+  if (limit) {
+    params.set("limit", String(limit));
   }
 
   // Use the storefront Prisma-backed route (shared ERP SQLite), not the ERP HTTP API.

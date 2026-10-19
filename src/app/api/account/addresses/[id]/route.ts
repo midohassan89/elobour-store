@@ -1,4 +1,4 @@
-import { updateCustomerAddress } from "@/lib/accountData";
+import { setDefaultCustomerAddress, updateCustomerAddress } from "@/lib/accountData";
 import { findActiveDeliveryZone } from "@/lib/deliveryZones";
 import { currentCustomer } from "@/lib/erpAccount";
 import { NextResponse } from "next/server";
@@ -23,7 +23,14 @@ export async function PATCH(
     recipientName?: unknown;
     phoneNumber?: unknown;
     zoneId?: unknown;
+    isDefault?: unknown;
   } | null;
+  if (body?.isDefault === true && !String(body?.title ?? "").trim()) {
+    const updated = await setDefaultCustomerAddress(customer.id, id);
+    if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  }
+
   const title = String(body?.title ?? "").trim();
   const street = String(body?.street ?? "").trim();
   const city = String(body?.city ?? "").trim();

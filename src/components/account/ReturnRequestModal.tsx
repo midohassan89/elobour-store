@@ -38,6 +38,7 @@ export default function ReturnRequestModal({ order, onClose, onSuccess }: Return
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
 
   useEffect(() => {
     if (!order) {
@@ -112,6 +113,7 @@ export default function ReturnRequestModal({ order, onClose, onSuccess }: Return
           orderId: order.id,
           customerId: user.id,
           items,
+          reason,
         }),
       });
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -193,6 +195,16 @@ export default function ReturnRequestModal({ order, onClose, onSuccess }: Return
             );
           })}
         </ul>
+        <label className="mt-4 block">
+          <span className="mb-2 block text-sm font-extrabold text-stone-800 dark:text-gray-100">{t("returnReason")}</span>
+          <textarea
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder={t("returnReasonPlaceholder")}
+            rows={2}
+            className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+          />
+        </label>
         {formError ? <p className="mt-3 text-sm font-bold text-red-600">{formError}</p> : null}
         <div className="mt-5 flex flex-col gap-2 sm:flex-row">
           <button

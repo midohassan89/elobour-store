@@ -1,13 +1,16 @@
 import { randomUUID } from "crypto";
 import { canCancelOrder, canRequestReturn } from "@/lib/orderStatus";
 import { prisma } from "@/lib/prisma";
+import { resolveProductImage } from "@/utils/productImage";
 
 export type AccountOrderItem = {
   id: string;
+  productId: string;
   productName: string;
   quantity: number;
   price: number;
   isWeighed?: boolean;
+  image?: string | null;
 };
 
 export type AccountOrder = {
@@ -28,19 +31,27 @@ export type AccountReturnItem = {
   orderItemId: string;
   productName: string;
   quantity: number;
+  price: number;
+  image?: string | null;
 };
 
 export type AccountReturnRequest = {
   id: string;
   orderId: string;
+  orderNumber?: string | null;
   status: string;
   createdAt: string;
+  reason?: string;
+  orderTotal?: number;
   items: AccountReturnItem[];
 };
 
 export type AccountOrderDetails = AccountOrder & {
   returns: AccountReturnRequest[];
   returnRequests: AccountReturnRequest[];
+  shippingFee: number;
+  couponDiscount: number;
+  pointsDiscount: number;
 };
 
 export type AccountAddress = {
@@ -87,7 +98,7 @@ export async function listCustomerOrders(customerId: string): Promise<AccountOrd
     include: {
       items: {
         include: {
-          product: { select: { name: true, isWeighed: true } },
+          product: { select: { id: true, name: true, isWeighed: true, imageUrl: true } },
         },
       },
     },
@@ -122,10 +133,12 @@ export async function listCustomerOrders(customerId: string): Promise<AccountOrd
     createdAt: order.createdAt.toISOString(),
     items: order.items.map((item) => ({
       id: item.id,
+      productId: item.productId,
       productName: item.product.name,
       quantity: item.quantity,
       price: item.price,
       isWeighed: item.product.isWeighed === true,
+      image: resolveProductImage(item.product.imageUrl) || null,
     })),
     returnRequests: returnRequestsByOrder.get(order.id) ?? [],
   }));
@@ -447,13 +460,27 @@ export async function cancelCustomerOrder(customerId: string, orderId: string) {
 type ReturnRow = {
   id: string;
   orderId: string;
+  orderNumber?: string | null;
   status: string;
   createdAt: string | Date;
   itemId: string;
   orderItemId: string;
   quantity: number | bigint;
   productName: string;
+  price?: number | null;
+  imageUrl?: string | null;
+  orderTotal?: number | null;
+  notes?: string | null;
 };
+
+function reasonFromNotes(notes: string | null | undefined, returnId: string) {
+  const prefix = `returnReason[${returnId}]:`;
+  return (notes ?? "")
+    .split("\n")
+    .find((line) => line.startsWith(prefix))
+    ?.slice(prefix.length)
+    .trim() ?? "";
+}
 
 function groupReturnRows(rows: ReturnRow[]) {
   const returns = new Map<string, AccountReturnRequest>();
@@ -466,11 +493,16 @@ function groupReturnRows(rows: ReturnRow[]) {
       createdAt: asIso(row.createdAt),
       items: [],
     };
+    current.orderNumber = row.orderNumber ?? current.orderNumber ?? null;
+    current.orderTotal = row.orderTotal == null ? current.orderTotal : Number(row.orderTotal);
+    current.reason = reasonFromNotes(row.notes, row.id) || current.reason;
     current.items.push({
       id: row.itemId,
       orderItemId: row.orderItemId,
       productName: row.productName,
       quantity: Number(row.quantity),
+      price: Number(row.price ?? 0),
+      image: resolveProductImage(row.imageUrl) || null,
     });
     returns.set(row.id, current);
   }
@@ -489,7 +521,7 @@ export async function getCustomerOrder(customerId: string, orderId: string): Pro
     include: {
       items: {
         include: {
-          product: { select: { name: true, isWeighed: true } },
+          product: { select: { id: true, name: true, isWeighed: true, imageUrl: true } },
         },
       },
     },
@@ -508,8 +540,14 @@ export async function getCustomerOrder(customerId: string, orderId: string): Pro
       ReturnItem.id AS itemId,
       ReturnItem.orderItemId AS orderItemId,
       ReturnItem.quantity AS quantity,
-      Product.name AS productName
+      Product.name AS productName,
+      OrderItem.price AS price,
+      Product.imageUrl AS imageUrl,
+      "Order".orderNumber AS orderNumber,
+      "Order".totalAmount AS orderTotal,
+      "Order".notes AS notes
     FROM ReturnRequest
+    INNER JOIN "Order" ON "Order".id = ReturnRequest.orderId
     INNER JOIN ReturnItem ON ReturnItem.returnRequestId = ReturnRequest.id
     INNER JOIN OrderItem ON OrderItem.id = ReturnItem.orderItemId
     INNER JOIN Product ON Product.id = OrderItem.productId
@@ -520,9 +558,20 @@ export async function getCustomerOrder(customerId: string, orderId: string): Pro
 
   const returns = groupReturnRows(rows);
 
-  const numberRows = await prisma.$queryRaw<Array<{ orderNumber: string | null }>>`
-    SELECT orderNumber FROM "Order" WHERE id = ${order.id} LIMIT 1
+  const numberRows = await prisma.$queryRaw<
+    Array<{
+      orderNumber: string | null;
+      shippingFee: number | null;
+      couponDiscount: number | null;
+      pointsDiscount: number | null;
+    }>
+  >`
+    SELECT orderNumber, shippingFee, couponDiscount, pointsDiscount
+    FROM "Order"
+    WHERE id = ${order.id}
+    LIMIT 1
   `;
+  const moneyRows = numberRows;
 
   return {
     id: order.id,
@@ -535,11 +584,16 @@ export async function getCustomerOrder(customerId: string, orderId: string): Pro
     createdAt: order.createdAt.toISOString(),
     items: order.items.map((item) => ({
       id: item.id,
+      productId: item.productId,
       productName: item.product.name,
       quantity: item.quantity,
       price: item.price,
       isWeighed: item.product.isWeighed === true,
+      image: resolveProductImage(item.product.imageUrl) || null,
     })),
+    shippingFee: moneyRows[0]?.shippingFee ?? 0,
+    couponDiscount: moneyRows[0]?.couponDiscount ?? 0,
+    pointsDiscount: moneyRows[0]?.pointsDiscount ?? 0,
     returns,
     returnRequests: returns,
   };
@@ -555,8 +609,14 @@ export async function listCustomerReturns(customerId: string): Promise<AccountRe
       ReturnItem.id AS itemId,
       ReturnItem.orderItemId AS orderItemId,
       ReturnItem.quantity AS quantity,
-      Product.name AS productName
+      Product.name AS productName,
+      OrderItem.price AS price,
+      Product.imageUrl AS imageUrl,
+      "Order".orderNumber AS orderNumber,
+      "Order".totalAmount AS orderTotal,
+      "Order".notes AS notes
     FROM ReturnRequest
+    INNER JOIN "Order" ON "Order".id = ReturnRequest.orderId
     INNER JOIN ReturnItem ON ReturnItem.returnRequestId = ReturnRequest.id
     INNER JOIN OrderItem ON OrderItem.id = ReturnItem.orderItemId
     INNER JOIN Product ON Product.id = OrderItem.productId
@@ -577,8 +637,14 @@ export async function getCustomerReturn(customerId: string, returnId: string): P
       ReturnItem.id AS itemId,
       ReturnItem.orderItemId AS orderItemId,
       ReturnItem.quantity AS quantity,
-      Product.name AS productName
+      Product.name AS productName,
+      OrderItem.price AS price,
+      Product.imageUrl AS imageUrl,
+      "Order".orderNumber AS orderNumber,
+      "Order".totalAmount AS orderTotal,
+      "Order".notes AS notes
     FROM ReturnRequest
+    INNER JOIN "Order" ON "Order".id = ReturnRequest.orderId
     INNER JOIN ReturnItem ON ReturnItem.returnRequestId = ReturnRequest.id
     INNER JOIN OrderItem ON OrderItem.id = ReturnItem.orderItemId
     INNER JOIN Product ON Product.id = OrderItem.productId
@@ -589,10 +655,26 @@ export async function getCustomerReturn(customerId: string, returnId: string): P
   return groupReturnRows(rows)[0] ?? null;
 }
 
+export async function setDefaultCustomerAddress(customerId: string, addressId: string) {
+  const now = new Date().toISOString();
+  const existing = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT id FROM Address WHERE id = ${addressId} AND customerId = ${customerId} LIMIT 1
+  `;
+  if (!existing[0]) return false;
+  await prisma.$executeRaw`
+    UPDATE Address SET isDefault = 0, updatedAt = ${now} WHERE customerId = ${customerId}
+  `;
+  await prisma.$executeRaw`
+    UPDATE Address SET isDefault = 1, updatedAt = ${now} WHERE id = ${addressId} AND customerId = ${customerId}
+  `;
+  return true;
+}
+
 export async function createCustomerReturn(
   customerId: string,
   orderId: string,
   items: Array<{ orderItemId: string; quantity: number }>,
+  reason = "",
 ) {
   const requested = new Map<string, number>();
 
@@ -666,6 +748,17 @@ export async function createCustomerReturn(
       await tx.$executeRaw`
         INSERT INTO ReturnItem (id, returnRequestId, orderItemId, quantity)
         VALUES (${randomUUID()}, ${id}, ${orderItemId}, ${quantity})
+      `;
+    }
+
+    const trimmedReason = reason.trim();
+    if (trimmedReason) {
+      const noteRows = await tx.$queryRaw<Array<{ notes: string | null }>>`
+        SELECT notes FROM "Order" WHERE id = ${orderId} LIMIT 1
+      `;
+      const nextNotes = [noteRows[0]?.notes ?? "", `returnReason[${id}]: ${trimmedReason}`].filter(Boolean).join("\n");
+      await tx.$executeRaw`
+        UPDATE "Order" SET notes = ${nextNotes} WHERE id = ${orderId}
       `;
     }
 

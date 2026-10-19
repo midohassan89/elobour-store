@@ -147,6 +147,9 @@ export default function CheckoutPage() {
   const [addressesLoaded, setAddressesLoaded] = useState(false);
   const [addressChoice, setAddressChoice] = useState("");
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<SavedAddress | null>(null);
+  const [substitution, setSubstitution] = useState<"CALL" | "REPLACE" | "REMOVE">("CALL");
+  const [deliveryNotes, setDeliveryNotes] = useState("");
   const [addressFormKey, setAddressFormKey] = useState(0);
   const [draft, setDraft] = useState<AddressFormValues>(() => emptyAddressDraft());
   const [loginOpen, setLoginOpen] = useState(false);
@@ -333,7 +336,8 @@ export default function CheckoutPage() {
             })
           : [];
         setAddresses(nextAddresses);
-        const preferred = nextAddresses.find((address) => address.isDefault) ?? nextAddresses[0];
+        const stored = window.localStorage.getItem("egychina-address") ?? "";
+        const preferred = nextAddresses.find((address) => address.id === stored) ?? nextAddresses.find((address) => address.isDefault) ?? nextAddresses[0];
 
         if (!preferred) {
           setAddressChoice("new");
@@ -378,7 +382,9 @@ export default function CheckoutPage() {
   }, [submitted, router]);
 
   function selectSavedAddress(address: SavedAddress) {
+    window.localStorage.setItem("egychina-address", address.id);
     setShowNewAddressForm(false);
+    setEditingAddress(null);
     setAddressChoice(address.id);
     if (address.zoneId) {
       setSelectedZoneId(address.zoneId);
@@ -442,6 +448,41 @@ export default function CheckoutPage() {
 
       const saved = { ...created, zone, zoneId: zone.id };
       setAddresses((current) => [saved, ...(current || []).filter((address) => address.id !== saved.id)]);
+      selectSavedAddress(saved);
+    } catch {
+      setError(t("addressFailed"));
+    } finally {
+      setSavingAddress(false);
+    }
+  }
+
+  async function saveEditedAddress(addressId: string, values: AddressFormValues) {
+    const zone = deliveryZones.find((item) => item.id === values.zoneId) ?? null;
+    if (!zone || savingAddress) return;
+    setSavingAddress(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/account/addresses/${encodeURIComponent(addressId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: values.title.trim(),
+          recipientName: values.recipientName.trim(),
+          street: values.street.trim(),
+          city: values.city.trim() || DEFAULT_ADDRESS_CITY,
+          phoneNumber: values.phoneNumber.trim(),
+          zoneId: zone.id,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as { address?: unknown } | null;
+      const updated = readAddress(payload?.address);
+      if (!response.ok || !updated) {
+        setError(t("addressFailed"));
+        return;
+      }
+      const saved = { ...updated, zone, zoneId: zone.id };
+      setAddresses((current) => current.map((address) => (address.id === saved.id ? { ...address, ...saved } : address)));
+      setEditingAddress(null);
       selectSavedAddress(saved);
     } catch {
       setError(t("addressFailed"));
@@ -593,6 +634,9 @@ export default function CheckoutPage() {
           totalAmount: finalTotal,
           pointsRedeemed,
           couponCode: appliedCoupon?.code ?? "",
+          notes: [`substitution: ${substitution}`, deliveryNotes.trim() ? `deliveryNotes: ${deliveryNotes.trim()}` : ""]
+            .filter(Boolean)
+            .join("\n"),
           saveAddress: showNewAddressForm,
           addressTitle: resolvedAddressTitle,
           street: addressDetails,
@@ -702,7 +746,7 @@ export default function CheckoutPage() {
           ) : (
             <div className="mt-8 grid gap-6 lg:grid-cols-5">
               <div className="space-y-5 rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6 lg:col-span-3 dark:border-gray-800 dark:bg-gray-900">
-                {(savedAddresses || []).length > 0 && !showNewAddressForm ? (
+                {(savedAddresses || []).length > 0 && !showNewAddressForm && !editingAddress ? (
                   <fieldset className="space-y-3">
                     <legend className="text-sm font-extrabold text-stone-950 dark:text-gray-100">{t("savedAddresses")}</legend>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -749,6 +793,18 @@ export default function CheckoutPage() {
                                 </span>
                               </span>
                             </button>
+                            <div className="flex shrink-0 flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingAddress(address);
+                                setShowNewAddressForm(false);
+                                setError(null);
+                              }}
+                              className="rounded-full px-2 py-1 text-xs font-extrabold text-primary hover:bg-primary-50"
+                            >
+                              {t("editAddress")}
+                            </button>
                             <button
                               type="button"
                               aria-label={t("deleteAddress")}
@@ -759,6 +815,7 @@ export default function CheckoutPage() {
                               <Trash2 className="h-3.5 w-3.5" />
                               {t("deleteAddress")}
                             </button>
+                            </div>
                           </div>
                         );
                       })}
@@ -774,6 +831,23 @@ export default function CheckoutPage() {
                       </button>
                     </div>
                   </fieldset>
+                ) : null}
+
+                {editingAddress ? (
+                  <AddressForm
+                    key={editingAddress.id}
+                    initialData={editingAddress}
+                    zones={deliveryZones}
+                    zonesUnavailable={zonesLoaded && (zonesError || deliveryZones.length === 0)}
+                    pending={savingAddress}
+                    title={t("editAddress")}
+                    error={error}
+                    onCancel={() => {
+                      setEditingAddress(null);
+                      setError(null);
+                    }}
+                    onSubmit={(values) => void saveEditedAddress(editingAddress.id, values)}
+                  />
                 ) : null}
 
                 {showNewAddressForm ? (
@@ -794,7 +868,7 @@ export default function CheckoutPage() {
                   />
                 ) : null}
 
-                {!showNewAddressForm ? (
+                {!showNewAddressForm && !editingAddress ? (
                 <form onSubmit={handleSubmit} className="space-y-5">
                 <hr className="my-8 border-gray-200 dark:border-gray-800" />
                 <div>
@@ -804,11 +878,59 @@ export default function CheckoutPage() {
                       {t("estimatedArrival", { time: formatEstimatedTime(selectedZone.estimatedTime, language) })}
                     </p>
                   ) : null}
+                  {selectedZone && selectedZone.minOrder > 0 ? (
+                    <div className="mb-3">
+                      <div className="h-2 overflow-hidden rounded-full bg-stone-100 dark:bg-gray-800">
+                        <div
+                          className={`h-full rounded-full ${belowMinOrder ? "bg-amber-500" : "bg-primary"}`}
+                          style={{ width: `${Math.min(100, (totalPrice / selectedZone.minOrder) * 100)}%` }}
+                        />
+                      </div>
+                      <p className={`mt-2 text-sm font-bold ${belowMinOrder ? "text-amber-700 dark:text-amber-300" : "text-primary"}`}>
+                        {belowMinOrder
+                          ? t("minOrderProgress", {
+                              remaining: formatPointsAmount(selectedZone.minOrder - totalPrice),
+                              minimum: formatPointsAmount(selectedZone.minOrder),
+                            })
+                          : t("minOrderReached")}
+                      </p>
+                    </div>
+                  ) : null}
                   {belowMinOrder && selectedZone ? (
                     <p role="alert" className="mb-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
                       {t("minOrderNotMet", { amount: formatPointsAmount(selectedZone.minOrder) })}
                     </p>
                   ) : null}
+                  <fieldset className="mb-4 space-y-2">
+                    <legend className="mb-2 text-sm font-extrabold text-stone-950 dark:text-gray-100">{t("substitutionTitle")}</legend>
+                    {(
+                      [
+                        ["CALL", t("substitutionCall")],
+                        ["REPLACE", t("substitutionReplace")],
+                        ["REMOVE", t("substitutionRemove")],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <label key={value} className="flex items-center gap-2 text-sm font-bold text-stone-700 dark:text-gray-200">
+                        <input
+                          type="radio"
+                          name="substitution"
+                          checked={substitution === value}
+                          onChange={() => setSubstitution(value)}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </fieldset>
+                  <label className="mb-4 block">
+                    <span className="mb-2 block text-sm font-extrabold text-stone-950 dark:text-gray-100">{t("deliveryNotes")}</span>
+                    <textarea
+                      value={deliveryNotes}
+                      onChange={(event) => setDeliveryNotes(event.target.value)}
+                      placeholder={t("deliveryNotesPlaceholder")}
+                      rows={2}
+                      className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-900 outline-none focus:border-primary dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                    />
+                  </label>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <button
                       type="button"
@@ -957,7 +1079,7 @@ export default function CheckoutPage() {
                 ) : (
                   <ul className="mt-4 divide-y divide-stone-200 dark:divide-gray-800">
                     {(items || []).map((item) => (
-                      <li key={item.id} className="flex items-start justify-between gap-3 py-3">
+                      <li key={item.lineKey} className="flex items-start justify-between gap-3 py-3">
                         <div className="min-w-0">
                           <p className="font-semibold leading-6 dark:text-gray-100">
                             {getLocalizedName(item, language)}

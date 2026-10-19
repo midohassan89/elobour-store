@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
     const categoryId = request.nextUrl.searchParams.get("categoryId")?.trim() ?? "";
     const brandId = request.nextUrl.searchParams.get("brandId")?.trim() ?? "";
     const search = request.nextUrl.searchParams.get("search")?.trim() ?? "";
+    const sort = request.nextUrl.searchParams.get("sort")?.trim() ?? "";
+    const offersOnly = request.nextUrl.searchParams.get("offers") === "1";
     const pageRaw = Number(request.nextUrl.searchParams.get("page") ?? "1");
     const limitRaw = Number(request.nextUrl.searchParams.get("limit") ?? "20");
     const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
@@ -22,27 +24,69 @@ export async function GET(request: NextRequest) {
       Number.isFinite(limitRaw) && limitRaw >= 1 ? Math.floor(limitRaw) : 20;
     const skip = (page - 1) * limit;
 
-    const where = {
-      isActive: true,
-      ...(productId ? { id: productId } : {}),
-      // Temporarily include soft-deleted rows so the catalog is never empty during sync.
-      ...(categoryId ? { categoryId } : {}),
-      ...(brandId ? { brandId } : {}),
-      ...(search ? { name: { contains: search } } : {}),
-    };
+    const filters: Prisma.Sql[] = [Prisma.sql`isActive = 1`];
+    if (productId) filters.push(Prisma.sql`id = ${productId}`);
+    if (categoryId) filters.push(Prisma.sql`categoryId = ${categoryId}`);
+    if (brandId) filters.push(Prisma.sql`brandId = ${brandId}`);
+    if (search) {
+      const like = `%${search.replace(/[%_]/g, "")}%`;
+      filters.push(
+        Prisma.sql`(name LIKE ${like} OR IFNULL(nameEn, '') LIKE ${like} OR IFNULL(nameZh, '') LIKE ${like})`,
+      );
+    }
+    if (offersOnly) {
+      filters.push(
+        Prisma.sql`salePrice IS NOT NULL AND salePrice > 0 AND stockQuantity > 0 AND lower(COALESCE(stockStatus, '')) != 'outofstock'`,
+      );
+    }
+    if (sort === "instock") {
+      filters.push(Prisma.sql`stockQuantity > 0 AND lower(COALESCE(stockStatus, '')) != 'outofstock'`);
+    }
 
-    const [rows, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        include: { brand: true },
-        orderBy: [{ stockStatus: "asc" }, { createdAt: "desc" }],
-        skip,
-        take: limit,
-      }),
-      prisma.product.count({ where }),
-    ]);
+    const priceOrder =
+      sort === "price_asc"
+        ? Prisma.sql`CASE WHEN salePrice IS NOT NULL AND salePrice > 0 THEN salePrice ELSE price END ASC`
+        : sort === "price_desc"
+          ? Prisma.sql`CASE WHEN salePrice IS NOT NULL AND salePrice > 0 THEN salePrice ELSE price END DESC`
+          : Prisma.sql`createdAt DESC`;
+    const whereSql = Prisma.join(filters, " AND ");
+    const rankedIds = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT id
+      FROM Product
+      WHERE ${whereSql}
+      ORDER BY
+        CASE
+          WHEN stockQuantity > 0
+            AND lower(COALESCE(stockStatus, '')) != 'outofstock'
+            AND imageUrl IS NOT NULL
+            AND trim(imageUrl) != ''
+            AND imageUrl NOT LIKE '%placeholder%'
+          THEN 0
+          WHEN stockQuantity > 0 AND lower(COALESCE(stockStatus, '')) != 'outofstock'
+          THEN 1
+          ELSE 2
+        END ASC,
+        ${priceOrder}
+      LIMIT ${limit} OFFSET ${skip}
+    `);
+    const countRows = await prisma.$queryRaw<Array<{ total: number | bigint }>>(Prisma.sql`
+      SELECT COUNT(*) AS total FROM Product WHERE ${whereSql}
+    `);
+    const total = Number(countRows[0]?.total ?? 0);
+    const orderedIds = rankedIds.map((row) => row.id);
+    const rows = orderedIds.length
+      ? await prisma.product.findMany({
+          where: { id: { in: orderedIds } },
+          include: { brand: true },
+        })
+      : [];
+    const rowById = new Map(rows.map((product) => [product.id, product]));
+    const orderedRows = orderedIds.flatMap((id) => {
+      const product = rowById.get(id);
+      return product ? [product] : [];
+    });
 
-    const productIds = rows.map((product) => product.id);
+    const productIds = orderedRows.map((product) => product.id);
     const packageRows = productIds.length
       ? await prisma.$queryRaw<
           Array<{
@@ -67,7 +111,7 @@ export async function GET(request: NextRequest) {
       packagesByProduct.set(row.productId, current);
     }
 
-    const products = rows.map((product) => ({
+    const products = orderedRows.map((product) => ({
       id: product.id,
       name: product.name,
       nameEn: product.nameEn,

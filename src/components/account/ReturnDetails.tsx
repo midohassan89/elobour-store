@@ -6,6 +6,8 @@ import TimelineStepper, { type TimelineStep } from "@/components/ui/TimelineStep
 import type { AccountReturnRequest } from "@/lib/accountData";
 import { useAuthStore } from "@/store/authStore";
 import { ClipboardCheck, FileClock, PackageCheck, Truck } from "lucide-react";
+import SafeImage from "@/components/ui/SafeImage";
+import { formatOrderCode } from "@/utils/orderCode";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -122,7 +124,7 @@ export default function ReturnDetails() {
 
       {request ? (
         <article className="mt-4 rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6 dark:border-gray-800 dark:bg-gray-900">
-          <h1 className="text-2xl font-extrabold text-stone-950">#{request.orderId.slice(-6)}</h1>
+          <h1 dir="ltr" className="text-2xl font-extrabold text-stone-950 dark:text-gray-100">{formatOrderCode(request.orderNumber, request.orderId)}</h1>
           {created && !Number.isNaN(created.getTime()) ? (
             <p className="mt-1 text-xs font-semibold text-stone-500 dark:text-gray-400">
               {created.toLocaleString(locale, {
@@ -135,13 +137,29 @@ export default function ReturnDetails() {
           <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-gray-800 dark:bg-gray-900">
             <TimelineStepper steps={returnSteps} {...returnTimeline(request.status)} />
           </div>
-          <ul className="mt-4 space-y-2 text-sm text-stone-700 dark:text-gray-200">
+          <ul className="mt-4 space-y-3 text-sm text-stone-700 dark:text-gray-200">
             {request.items.map((item) => (
-              <li key={item.id}>
-                {item.productName} × {item.quantity}
+              <li key={item.id} className="flex items-center gap-3">
+                {item.image ? (
+                  <SafeImage src={item.image} alt="" width={56} height={56} className="h-14 w-14 rounded-xl object-cover" />
+                ) : (
+                  <span className="h-14 w-14 rounded-xl bg-stone-100 dark:bg-gray-800" />
+                )}
+                <span className="min-w-0 flex-1">{item.productName} × {item.quantity}</span>
+                <span className="shrink-0 font-bold">{item.price} {t("currency")}</span>
               </li>
             ))}
           </ul>
+          {request.reason ? (
+            <p className="mt-4 text-sm font-bold text-stone-700 dark:text-gray-200">
+              {t("returnReason")}: {request.reason}
+            </p>
+          ) : null}
+          {request.orderTotal != null ? (
+            <p className="mt-3 text-sm font-extrabold text-stone-950 dark:text-gray-100">
+              {t("invoiceSummary")}: {request.orderTotal} {t("currency")}
+            </p>
+          ) : null}
         </article>
       ) : null}
     </section>

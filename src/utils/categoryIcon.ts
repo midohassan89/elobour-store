@@ -2,18 +2,21 @@ import type { LucideIcon } from "lucide-react";
 import {
   Apple,
   Beef,
+  Candy,
   Carrot,
   Coffee,
   Cookie,
+  Croissant,
   Droplet,
   Fish,
   IceCreamCone,
-  LayoutGrid,
   Milk,
   Package,
+  Plug,
   ShoppingBasket,
   Snowflake,
   SprayCan,
+  Utensils,
   Wheat,
 } from "lucide-react";
 
@@ -27,11 +30,30 @@ const rules: { match: RegExp; icon: LucideIcon }[] = [
   { match: /مجمد|frozen/i, icon: Snowflake },
   { match: /آيس|آيسكريم|ice\s*cream/i, icon: IceCreamCone },
   { match: /بقالة|grocery|supermarket/i, icon: ShoppingBasket },
-  { match: /منظف|تنظيف|cleaning|detergent/i, icon: SprayCan },
-  { match: /مكرون|أرز|حبوب|pasta|rice|grain/i, icon: Wheat },
-  { match: /حلو|بسكويت|snack|sweet|cookie/i, icon: Cookie },
+  { match: /منظف|تنظيف|عناية|cleaning|detergent|personal/i, icon: SprayCan },
+  { match: /مكرون|أرز|حبوب|نشو|pasta|rice|grain/i, icon: Wheat },
+  { match: /حلو|بسكويت|تسال|سناكس|snack|sweet|cookie/i, icon: Cookie },
+  { match: /مخبوز|خبز|bakery|bread/i, icon: Croissant },
+  { match: /آسيو|صين|مستورد|asian|import/i, icon: Utensils },
+  { match: /معلب|صلص|canned|sauce/i, icon: Package },
+  { match: /كهرب|أدوات منزل|home|electric/i, icon: Plug },
+  { match: /حلوى|candy|chocolate/i, icon: Candy },
   { match: /جزر|carrot/i, icon: Carrot },
-  { match: /علب|تغليف|pack/i, icon: Package },
+];
+
+const fallbacks: LucideIcon[] = [
+  Apple,
+  Beef,
+  Fish,
+  Milk,
+  Cookie,
+  Wheat,
+  SprayCan,
+  Croissant,
+  Utensils,
+  Coffee,
+  ShoppingBasket,
+  Snowflake,
 ];
 
 export function categoryIconFor(name: string): LucideIcon {
@@ -43,5 +65,7 @@ export function categoryIconFor(name: string): LucideIcon {
     }
   }
 
-  return LayoutGrid;
+  let hash = 0;
+  for (const char of normalized) hash = (hash + char.charCodeAt(0)) % fallbacks.length;
+  return fallbacks[hash] ?? ShoppingBasket;
 }

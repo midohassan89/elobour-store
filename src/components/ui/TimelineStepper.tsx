@@ -47,12 +47,12 @@ export default function TimelineStepper({ steps, currentStatus, isCancelled = fa
               : "bg-primary text-white";
         const labelClass =
           state === "cancelled"
-            ? "font-extrabold text-red-700"
+            ? "font-extrabold text-red-700 dark:text-red-300"
             : state === "current"
-              ? "font-extrabold text-stone-950"
+              ? "font-extrabold text-stone-950 dark:text-gray-100"
               : state === "completed"
-                ? "font-bold text-green-800"
-                : "font-semibold text-stone-400 dark:text-gray-500";
+                ? "font-bold text-green-800 dark:text-emerald-300"
+                : "font-semibold text-stone-400 dark:text-gray-400";
 
         return (
           <li

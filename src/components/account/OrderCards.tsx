@@ -4,9 +4,12 @@ import ReturnRequestModal from "@/components/account/ReturnRequestModal";
 import { OrderStatusBadge } from "@/components/account/StatusBadge";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { canCancelOrder, canRequestReturn, normalizeOrderStatus } from "@/lib/orderStatus";
+import { cartLineKey, useCartStore } from "@/store/cartStore";
+import { formatOrderCode } from "@/utils/orderCode";
 import { formatQuantity } from "@/utils/quantity";
 import Link from "next/link";
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 export type OrderCardData = {
   id: string;
@@ -17,7 +20,9 @@ export type OrderCardData = {
   createdAt: string;
   items: {
     id: string;
+    productId?: string;
     productName: string;
+    image?: string | null;
     quantity: number;
     price: number;
     isWeighed?: boolean;
@@ -38,6 +43,7 @@ export default function OrderCards({ orders, cancellingId, cancelErrorId, onCanc
   const locale = language === "zh" ? "zh-CN" : language === "en" ? "en" : "ar-EG";
   const [returnOrder, setReturnOrder] = useState<OrderCardData | null>(null);
   const [returnedId, setReturnedId] = useState("");
+  const addItem = useCartStore((state) => state.addItem);
 
   return (
     <div className="space-y-4">
@@ -48,7 +54,7 @@ export default function OrderCards({ orders, cancellingId, cancelErrorId, onCanc
         return (
           <article key={order.id} className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-extrabold text-stone-900 dark:text-gray-100">{order.orderNumber || `#${order.id.slice(-6)}`}</span>
+              <span dir="ltr" className="inline-block text-sm font-extrabold text-stone-900 dark:text-gray-100">{formatOrderCode(order.orderNumber, order.id)}</span>
               <OrderStatusBadge status={order.status} />
             </div>
             {created && !Number.isNaN(created.getTime()) ? (
@@ -76,7 +82,7 @@ export default function OrderCards({ orders, cancellingId, cancelErrorId, onCanc
               ))}
             </ul>
             {order.address ? <p className="mt-3 text-xs leading-5 text-stone-500 dark:text-gray-400">{order.address}</p> : null}
-            <p className="mt-3 text-sm font-extrabold text-stone-950">
+            <p className="mt-3 text-sm font-extrabold text-stone-950 dark:text-gray-100">
               {t("orderTotal")}: {order.totalAmount} {t("currency")}
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -90,6 +96,29 @@ export default function OrderCards({ orders, cancellingId, cancelErrorId, onCanc
                   >
                     {t("trackOrder")}
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      for (const item of order.items) {
+                        if (!item.productId) continue;
+                        addItem(
+                          {
+                            id: item.productId,
+                            lineKey: cartLineKey(item.productId),
+                            name: item.productName,
+                            price: item.price,
+                            isWeighed: item.isWeighed,
+                            image: item.image ?? undefined,
+                          },
+                          item.quantity,
+                        );
+                      }
+                      toast.success(t("addedToCart"));
+                    }}
+                    className="rounded-full border border-stone-300 px-4 py-2 text-sm font-extrabold text-stone-800 transition hover:bg-stone-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
+                  >
+                    {t("reorder")}
+                  </button>
                   {canRequestReturn(order.status) ? (
                     <button
                       type="button"
@@ -106,7 +135,7 @@ export default function OrderCards({ orders, cancellingId, cancelErrorId, onCanc
                   type="button"
                   onClick={() => onCancel(order.id)}
                   disabled={cancellingId === order.id}
-                  className="rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-extrabold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900"
+                  className="rounded-full border border-red-300 bg-red-50 px-4 py-2 text-sm font-extrabold text-red-800 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-400 dark:bg-red-950 dark:text-red-100 dark:hover:bg-red-900"
                 >
                   {cancellingId === order.id ? t("cancellingOrder") : t("cancelOrder")}
                 </button>

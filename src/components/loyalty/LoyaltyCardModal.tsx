@@ -5,6 +5,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Barcode from "react-barcode";
 import { useI18n } from "@/components/i18n/LanguageProvider";
+import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import { useAuthStore } from "@/store/authStore";
 
 type LoyaltyCardModalProps = {
@@ -14,6 +15,7 @@ type LoyaltyCardModalProps = {
 
 export default function LoyaltyCardModal({ open, onClose }: LoyaltyCardModalProps) {
   const { t } = useI18n();
+  const { redeemValue } = useLoyaltySettings();
   const user = useAuthStore((state) => state.user);
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -76,6 +78,22 @@ export default function LoyaltyCardModal({ open, onClose }: LoyaltyCardModalProp
           <p className="mt-4 text-3xl font-extrabold tracking-tight">
             {t("pointsBadge", { count: user.pointsBalance })}
           </p>
+          <p className="mt-1 text-sm font-bold text-primary-50">
+            {t("pointsValue", { amount: (user.pointsBalance / redeemValue).toFixed(2) })}
+          </p>
+          <div className="mt-4">
+            <div className="h-2 overflow-hidden rounded-full bg-white/25">
+              <div
+                className="h-full rounded-full bg-white"
+                style={{ width: `${Math.min(100, (user.pointsBalance / 10000) * 100)}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs font-bold text-primary-50">
+              {user.pointsBalance >= 10000
+                ? t("pointsGoalReached")
+                : t("pointsProgress", { points: (10000 - user.pointsBalance).toLocaleString() })}
+            </p>
+          </div>
         </div>
 
         <div className="px-5 pb-6">

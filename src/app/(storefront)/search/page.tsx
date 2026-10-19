@@ -10,7 +10,7 @@ export default function SearchPage() {
       <Header />
       <main className="flex-1 pt-6">
         <Suspense fallback={<ProductGridSkeleton />}>
-          <ProductGrid queryParam="q" titleKey="searchResultsTitle" requireQuery />
+          <ProductGrid queryParam="q" titleKey="searchResultsTitle" requireQuery showSort />
         </Suspense>
       </main>
       <Footer />

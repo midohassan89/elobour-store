@@ -3,6 +3,8 @@ import { create } from "zustand";
 
 export type CartItem = {
   id: string;
+  lineKey: string;
+  packageId?: string;
   name: string;
   nameEn?: string;
   nameZh?: string;
@@ -12,14 +14,18 @@ export type CartItem = {
   image?: string;
 };
 
-type CartProduct = Omit<CartItem, "quantity">;
+type CartProduct = Omit<CartItem, "quantity" | "lineKey"> & { lineKey?: string };
+
+export function cartLineKey(productId: string, packageId?: string) {
+  return packageId ? `${productId}:${packageId}` : productId;
+}
 
 type CartState = {
   items: CartItem[];
   totalPrice: number;
   addItem: (item: CartProduct, quantity?: number) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  removeItem: (lineKey: string) => void;
+  updateQuantity: (lineKey: string, quantity: number) => void;
   clearCart: () => void;
   getTotalPrice: () => number;
 };
@@ -43,12 +49,13 @@ export const useCartStore = create<CartState>((set, get) => ({
     set((state) => {
       const isWeighed = item.isWeighed === true;
       const amount = snapQuantity(quantity ?? quantityStep(isWeighed), isWeighed);
-      const existing = state.items.find((entry) => entry.id === item.id);
+      const lineKey = item.lineKey || cartLineKey(item.id, item.packageId);
+      const existing = state.items.find((entry) => entry.lineKey === lineKey);
 
       if (existing) {
         return withTotal(
           state.items.map((entry) =>
-            entry.id === item.id
+            entry.lineKey === lineKey
               ? {
                   ...entry,
                   name: item.name,
@@ -64,25 +71,25 @@ export const useCartStore = create<CartState>((set, get) => ({
         );
       }
 
-      return withTotal([...state.items, { ...item, isWeighed, quantity: amount }]);
+      return withTotal([...state.items, { ...item, lineKey, isWeighed, quantity: amount }]);
     }),
-  removeItem: (id) =>
+  removeItem: (lineKey) =>
     set((state) =>
-      withTotal(state.items.filter((entry) => entry.id !== id)),
+      withTotal(state.items.filter((entry) => entry.lineKey !== lineKey)),
     ),
-  updateQuantity: (id, quantity) =>
+  updateQuantity: (lineKey, quantity) =>
     set((state) => {
-      const current = state.items.find((entry) => entry.id === id);
+      const current = state.items.find((entry) => entry.lineKey === lineKey);
       const isWeighed = current?.isWeighed === true;
       const next = snapQuantity(quantity, isWeighed);
 
       if (!current || next < quantityStep(isWeighed)) {
-        return withTotal(state.items.filter((entry) => entry.id !== id));
+        return withTotal(state.items.filter((entry) => entry.lineKey !== lineKey));
       }
 
       return withTotal(
         state.items.map((entry) =>
-          entry.id === id ? { ...entry, quantity: next } : entry,
+          entry.lineKey === lineKey ? { ...entry, quantity: next } : entry,
         ),
       );
     }),

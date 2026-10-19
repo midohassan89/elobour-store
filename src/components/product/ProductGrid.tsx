@@ -9,16 +9,20 @@ import { SearchX } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+type ProductSort = "" | "price_asc" | "price_desc" | "instock";
+
 type ProductGridProps = {
   titleKey?: "products" | "featuredProducts" | "searchResultsTitle";
   queryParam?: string;
   requireQuery?: boolean;
+  showSort?: boolean;
 };
 
 export default function ProductGrid({
   titleKey = "products",
   queryParam = "search",
   requireQuery = false,
+  showSort = false,
 }: ProductGridProps) {
   const router = useRouter();
   const { t } = useI18n();
@@ -30,7 +34,8 @@ export default function ProductGrid({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
-  const filtersRef = useRef({ categoryId, brandId, search });
+  const [sort, setSort] = useState<ProductSort>("");
+  const filtersRef = useRef({ categoryId, brandId, search, sort });
 
   useEffect(() => {
     if (requireQuery && !search) {
@@ -41,8 +46,9 @@ export default function ProductGrid({
     const filtersChanged =
       filtersRef.current.categoryId !== categoryId ||
       filtersRef.current.brandId !== brandId ||
-      filtersRef.current.search !== search;
-    filtersRef.current = { categoryId, brandId, search };
+      filtersRef.current.search !== search ||
+      filtersRef.current.sort !== sort;
+    filtersRef.current = { categoryId, brandId, search, sort };
 
     const timeoutId = window.setTimeout(() => {
       if (filtersChanged && page !== 1) {
@@ -63,6 +69,7 @@ export default function ProductGrid({
         brandId: brandId || undefined,
         search: search || undefined,
         page,
+        sort: sort || undefined,
       })
         .then((result) => {
           if (ignore) {
@@ -102,7 +109,7 @@ export default function ProductGrid({
       ignore = true;
       window.clearTimeout(timeoutId);
     };
-  }, [page, categoryId, brandId, search, requireQuery]);
+  }, [page, categoryId, brandId, search, requireQuery, sort]);
 
   if (requireQuery && !search) {
     return (
@@ -127,7 +134,39 @@ export default function ProductGrid({
       aria-label={t("products")}
       className="mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6"
     >
-      <h2 className="mb-4 text-xl font-extrabold sm:text-2xl">{t(titleKey)}</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-extrabold sm:text-2xl">{t(titleKey)}</h2>
+        {showSort ? (
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["", t("featuredProducts")],
+                ["price_asc", t("sortLowPrice")],
+                ["price_desc", t("sortHighPrice")],
+                ["instock", t("sortInStock")],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value || "default"}
+                type="button"
+                aria-pressed={sort === value}
+                onClick={() => {
+                  setProductsList([]);
+                  setPage(1);
+                  setSort(value);
+                }}
+                className={`rounded-full px-3 py-1.5 text-xs font-extrabold transition ${
+                  sort === value
+                    ? "bg-primary text-white"
+                    : "border border-stone-200 bg-white text-stone-700 hover:border-primary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
       {isEmpty ? (
         <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
           <SearchX className="h-16 w-16 text-stone-400 dark:text-gray-500" aria-hidden="true" />

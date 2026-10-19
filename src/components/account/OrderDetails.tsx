@@ -5,6 +5,8 @@ import { useI18n } from "@/components/i18n/LanguageProvider";
 import TimelineStepper, { type TimelineStep } from "@/components/ui/TimelineStepper";
 import type { AccountOrderDetails } from "@/lib/accountData";
 import { normalizeOrderStatus } from "@/lib/orderStatus";
+import SafeImage from "@/components/ui/SafeImage";
+import { formatOrderCode } from "@/utils/orderCode";
 import { formatQuantity } from "@/utils/quantity";
 import { useAuthStore } from "@/store/authStore";
 import { CheckCircle, ClipboardCheck, Clock, Package, Truck } from "lucide-react";
@@ -139,7 +141,7 @@ export default function OrderDetails() {
 
       {order ? (
         <article className="mt-4 rounded-3xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6 dark:border-gray-800 dark:bg-gray-900">
-          <h1 className="text-2xl font-extrabold text-stone-950 dark:text-gray-100">{order.orderNumber || `#${order.id.slice(-6)}`}</h1>
+          <h1 dir="ltr" className="text-2xl font-extrabold text-stone-950 dark:text-gray-100">{formatOrderCode(order.orderNumber, order.id)}</h1>
           {created && !Number.isNaN(created.getTime()) ? (
             <p className="mt-1 text-xs font-semibold text-stone-500 dark:text-gray-400">
               {created.toLocaleString(locale, {
@@ -154,10 +156,15 @@ export default function OrderDetails() {
           <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-gray-800 dark:bg-gray-900">
             <TimelineStepper steps={deliverySteps} {...deliveryTimeline(order.status)} />
           </div>
-          <ul className="mt-4 space-y-2 text-sm text-stone-700 dark:text-gray-200">
+          <ul className="mt-4 space-y-3 text-sm text-stone-700 dark:text-gray-200">
             {order.items.map((item) => (
-              <li key={item.id} className="flex items-start justify-between gap-3">
-                <span>
+              <li key={item.id} className="flex items-center gap-3">
+                {item.image ? (
+                  <SafeImage src={item.image} alt="" width={56} height={56} className="h-14 w-14 rounded-xl object-cover" />
+                ) : (
+                  <span className="h-14 w-14 rounded-xl bg-stone-100 dark:bg-gray-800" />
+                )}
+                <span className="min-w-0 flex-1">
                   {item.productName} × {formatQuantity(item.quantity, item.isWeighed === true)}
                   {item.isWeighed ? ` ${t("kilogram")}` : ""}
                 </span>
@@ -168,9 +175,32 @@ export default function OrderDetails() {
             ))}
           </ul>
           {order.address ? <p className="mt-4 text-sm leading-6 text-stone-500 dark:text-gray-400">{order.address}</p> : null}
-          <p className="mt-3 text-sm font-extrabold text-stone-950">
-            {t("orderTotal")}: {order.totalAmount} {t("currency")}
-          </p>
+          <dl className="mt-4 space-y-1 rounded-2xl bg-stone-50 p-4 text-sm dark:bg-gray-800">
+            <div className="flex justify-between text-stone-600 dark:text-gray-300">
+              <dt>{t("goodsSubtotal")}</dt>
+              <dd>{order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)} {t("currency")}</dd>
+            </div>
+            <div className="flex justify-between text-stone-600 dark:text-gray-300">
+              <dt>{t("shippingFee")}</dt>
+              <dd>{order.shippingFee} {t("currency")}</dd>
+            </div>
+            {order.couponDiscount > 0 ? (
+              <div className="flex justify-between text-stone-600 dark:text-gray-300">
+                <dt>{t("couponDiscount")}</dt>
+                <dd>-{order.couponDiscount} {t("currency")}</dd>
+              </div>
+            ) : null}
+            {order.pointsDiscount > 0 ? (
+              <div className="flex justify-between text-stone-600 dark:text-gray-300">
+                <dt>{t("orderPoints")}</dt>
+                <dd>-{order.pointsDiscount} {t("currency")}</dd>
+              </div>
+            ) : null}
+            <div className="flex justify-between font-extrabold text-stone-950 dark:text-gray-100">
+              <dt>{t("invoiceSummary")}</dt>
+              <dd>{order.totalAmount} {t("currency")}</dd>
+            </div>
+          </dl>
         </article>
       ) : null}
     </section>

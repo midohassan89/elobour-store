@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     orderId?: unknown;
     customerId?: unknown;
     items?: unknown;
+    reason?: unknown;
   } | null;
   const orderId = typeof body?.orderId === "string" ? body.orderId.trim() : "";
   const customerId = typeof body?.customerId === "string" ? body.customerId.trim() : "";
@@ -33,7 +34,12 @@ export async function POST(request: Request) {
   });
 
   try {
-    const result = await createCustomerReturn(customer.id, orderId, items);
+    const result = await createCustomerReturn(
+      customer.id,
+      orderId,
+      items,
+      typeof body?.reason === "string" ? body.reason : "",
+    );
 
     if ("error" in result) {
       const status = result.error === "not_found" ? 404 : result.error === "not_allowed" ? 409 : 400;

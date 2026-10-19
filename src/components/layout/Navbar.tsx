@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, ShoppingCart, User, X } from "lucide-react";
+import { MapPin, Menu, ShoppingCart, Star, User, X } from "lucide-react";
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import LoginModal from "@/components/auth/LoginModal";
@@ -28,6 +28,9 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<Array<{ id: string; title: string; city: string; zoneName: string; isDefault: boolean }>>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const wishlistCount = useWishlist().ids.length;
   const itemCount = useCartStore((state) =>
@@ -66,6 +69,37 @@ export default function Navbar() {
       void hydrate();
     }
   }, [authReady, hydrate]);
+
+  useEffect(() => {
+    if (!user) {
+      setSavedAddresses([]);
+      return;
+    }
+    const controller = new AbortController();
+    fetch("/api/account/addresses", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.json())
+      .then((data: { addresses?: Array<Record<string, unknown>> }) => {
+        const next = (data.addresses ?? []).flatMap((address) => {
+          if (!address || typeof address.id !== "string") return [];
+          const zone = address.zone && typeof address.zone === "object" ? (address.zone as Record<string, unknown>) : null;
+          return [
+            {
+              id: address.id,
+              title: typeof address.title === "string" ? address.title : "",
+              city: typeof address.city === "string" ? address.city : "",
+              zoneName: zone && typeof zone.nameAr === "string" ? zone.nameAr : "",
+              isDefault: address.isDefault === true,
+            },
+          ];
+        });
+        setSavedAddresses(next);
+        const stored = window.localStorage.getItem("egychina-address") ?? "";
+        const preferred = next.find((address) => address.id === stored) ?? next.find((address) => address.isDefault) ?? next[0];
+        setSelectedAddressId(preferred?.id ?? "");
+      })
+      .catch(() => setSavedAddresses([]));
+    return () => controller.abort();
+  }, [user]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -135,9 +169,44 @@ export default function Navbar() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [menuOpen, closeMenu]);
 
+  const selectedAddress = savedAddresses.find((address) => address.id === selectedAddressId) ?? savedAddresses[0];
+  const addressPlace = selectedAddress
+    ? [selectedAddress.title, selectedAddress.zoneName || selectedAddress.city].filter(Boolean).join(" - ")
+    : "";
+
   return (
     <header className="sticky top-0 z-40 border-b border-primary-100 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-950/95">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:flex-nowrap lg:gap-5 lg:py-4">
+      <div className="border-b border-stone-100 bg-stone-50 dark:border-gray-800 dark:bg-gray-900">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-1.5 sm:px-6">
+          <p className="truncate text-xs font-bold text-stone-700 dark:text-gray-300">
+            {authReady && user ? (clockReady ? greeting : t("greetingEveningPlain")) : t("storeName")}
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            {authReady && user ? (
+              <button
+                type="button"
+                onClick={() => setCardOpen(true)}
+                className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-extrabold text-primary-800"
+              >
+                <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                {t("pointsBadge", { count: user.pointsBalance })}
+              </button>
+            ) : authReady ? (
+              <button type="button" onClick={() => setLoginOpen(true)} className="text-xs font-extrabold text-primary">
+                {t("login")}
+              </button>
+            ) : null}
+            <LanguageSwitcher />
+            <ThemeToggle />
+            {authReady && user ? (
+              <button type="button" onClick={() => void logout()} className="text-xs font-bold text-stone-500 hover:text-primary dark:text-gray-400">
+                {t("logout")}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-3 sm:px-6 lg:flex-nowrap lg:gap-4">
         <button
           type="button"
           onClick={() => setMenuOpen((open) => !open)}
@@ -156,68 +225,56 @@ export default function Navbar() {
           {t("storeName")}
         </Link>
 
-        <div className="order-3 ms-auto flex w-fit max-w-full flex-wrap items-center justify-end gap-2 lg:order-4 lg:ms-0 lg:max-w-sm">
-          {authReady && user ? (
-            <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5">
-              <Link
-                href="/profile"
-                className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-2 text-xs font-extrabold text-stone-800 transition hover:border-primary hover:text-primary sm:text-sm dark:border-gray-800 dark:text-gray-100"
-              >
-                <User className="h-4 w-4" />
-                {t("myAccount")}
-              </Link>
-              <button
-                type="button"
-                onClick={() => setCardOpen(true)}
-                className="rounded-full bg-stone-950 px-3 py-2 text-xs font-extrabold text-white transition hover:bg-stone-800 sm:text-sm"
-              >
-                {t("loyaltyCard")}
-              </button>
-              <span className="max-w-40 truncate text-xs font-extrabold text-stone-800 sm:max-w-none sm:text-sm dark:text-gray-100">
-                {clockReady ? greeting : t("greetingEveningPlain")}
-              </span>
-              <span className="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-extrabold text-primary-800">
-                {t("pointsBadge", { count: user.pointsBalance })}
-              </span>
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="text-xs font-bold text-stone-500 transition hover:text-primary dark:text-gray-400"
-              >
-                {t("logout")}
-              </button>
-            </div>
-          ) : authReady ? (
+        {user && savedAddresses.length > 0 ? (
+          <div className="relative order-4 w-full min-w-0 md:order-3 md:w-auto">
             <button
               type="button"
-              onClick={() => setLoginOpen(true)}
-              className="rounded-full bg-primary px-3 py-2 text-xs font-extrabold text-white transition hover:bg-primary-500 sm:px-4 sm:text-sm"
+              aria-expanded={addressOpen}
+              onClick={() => setAddressOpen((open) => !open)}
+              className="inline-flex max-w-full items-center gap-1 rounded-full border border-stone-200 px-3 py-2 text-xs font-extrabold text-stone-800 dark:border-gray-800 dark:text-gray-100"
             >
-              {t("login")}
+              <MapPin className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate">{t("deliveryTo", { place: addressPlace })}</span>
             </button>
-          ) : null}
-          <LanguageSwitcher />
-          <ThemeToggle />
-          {user ? (
-            <Link
-              href="/account?tab=wishlist"
-              aria-label={t("wishlistWithCount", { count: wishlistCount })}
-              className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-stone-200 text-lg text-stone-800 transition hover:border-primary hover:text-primary dark:border-gray-800 dark:text-gray-100"
-            >
-              {wishlistCount > 0 ? "❤️" : "♡"}
-              <span className="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-white dark:text-white">
-                {wishlistCount}
-              </span>
-            </Link>
-          ) : null}
-          <NotificationBell />
+            {addressOpen ? (
+              <div className="absolute z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900">
+                {savedAddresses.map((address) => (
+                  <button
+                    key={address.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedAddressId(address.id);
+                      window.localStorage.setItem("egychina-address", address.id);
+                      setAddressOpen(false);
+                    }}
+                    className="block w-full px-4 py-3 text-start text-sm font-bold text-stone-800 hover:bg-stone-50 dark:text-gray-100 dark:hover:bg-gray-800"
+                  >
+                    {[address.title, address.zoneName || address.city].filter(Boolean).join(" - ")}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="order-5 w-full min-w-0 md:order-4 md:flex-1">
+          <Suspense
+            fallback={
+              <div className="h-12 w-full rounded-full border border-stone-200 bg-stone-50 sm:h-14 dark:border-gray-800 dark:bg-gray-900" />
+            }
+          >
+            <LiveSearch />
+          </Suspense>
+        </div>
+
+        <div className="order-3 ms-auto flex items-center gap-1.5 md:order-5">
           <button
             type="button"
             onClick={() => setCartOpen(true)}
             aria-label={t("cartWithCount", { count: itemCount })}
-            className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-stone-200 text-stone-800 transition hover:border-primary hover:text-primary dark:border-gray-800 dark:text-gray-100"
+            className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-stone-200 text-stone-800 transition hover:border-primary hover:text-primary dark:border-gray-800 dark:text-gray-100"
           >
-            <ShoppingCart className="h-6 w-6" />
+            <ShoppingCart className="h-5 w-5" />
             <span
               className={`absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-white dark:text-white ${
                 cartPop ? "animate-bounce" : ""
@@ -226,16 +283,32 @@ export default function Navbar() {
               {Number.isInteger(itemCount) ? itemCount : Math.round(itemCount * 100) / 100}
             </span>
           </button>
-        </div>
-
-        <div className="order-4 w-full min-w-0 lg:order-3 lg:w-auto lg:max-w-3xl lg:flex-1">
-          <Suspense
-            fallback={
-              <div className="h-12 w-full rounded-full border border-stone-200 bg-stone-50 sm:h-14 dark:border-gray-800 dark:bg-gray-900" />
-            }
+          <NotificationBell />
+          {user ? (
+            <Link
+              href="/account?tab=wishlist"
+              aria-label={t("wishlistWithCount", { count: wishlistCount })}
+              className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-stone-200 text-lg text-stone-800 transition hover:border-primary hover:text-primary dark:border-gray-800 dark:text-gray-100"
+            >
+              {wishlistCount > 0 ? "❤️" : "♡"}
+              <span className="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-white dark:text-white">
+                {wishlistCount}
+              </span>
+            </Link>
+          ) : null}
+          <Link
+            href={user ? "/account" : "/profile"}
+            aria-label={t("myAccount")}
+            onClick={(event) => {
+              if (!user) {
+                event.preventDefault();
+                setLoginOpen(true);
+              }
+            }}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-stone-200 text-stone-800 transition hover:border-primary hover:text-primary dark:border-gray-800 dark:text-gray-100"
           >
-            <LiveSearch />
-          </Suspense>
+            <User className="h-5 w-5" />
+          </Link>
         </div>
       </div>
 

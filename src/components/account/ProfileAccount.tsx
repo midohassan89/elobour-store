@@ -8,7 +8,9 @@ import { useI18n } from "@/components/i18n/LanguageProvider";
 import ProductCard from "@/components/product/ProductCard";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
 import type { AccountAddress, AccountReturnRequest } from "@/lib/accountData";
+import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
+import toast from "react-hot-toast";
 import { maskPhone } from "@/utils/maskPhone";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -49,6 +51,8 @@ export default function ProfileAccount() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState<AccountAddress | null>(null);
+  const [addingAddress, setAddingAddress] = useState(false);
+  const addItem = useCartStore((state) => state.addItem);
   const [addressFormKey, setAddressFormKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -146,6 +150,27 @@ export default function ProfileAccount() {
     }
   }
 
+  async function setDefaultAddress(addressId: string) {
+    const response = await fetch(`/api/account/addresses/${encodeURIComponent(addressId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isDefault: true }),
+    });
+    if (!response.ok) return;
+    setAddresses((current) => current.map((address) => ({ ...address, isDefault: address.id === addressId })));
+  }
+
+  async function removeAddress(addressId: string) {
+    if (!user || !window.confirm(t("deleteAddressConfirm"))) return;
+    const response = await fetch(
+      `/api/customers/${encodeURIComponent(user.id)}/addresses/${encodeURIComponent(addressId)}`,
+      { method: "DELETE" },
+    );
+    if (!response.ok) return;
+    setAddresses((current) => current.filter((address) => address.id !== addressId));
+    if (editing?.id === addressId) setEditing(null);
+  }
+
   async function saveAddress(values: AddressFormValues) {
     setFormError(null);
     setSaving(true);
@@ -186,6 +211,7 @@ export default function ProfileAccount() {
         return [saved, ...next.filter((address) => address.id !== saved.id)];
       });
       setEditing(null);
+      setAddingAddress(false);
       setAddressFormKey((key) => key + 1);
     } catch {
       setFormError(t("addressFailed"));
@@ -329,16 +355,35 @@ export default function ProfileAccount() {
                     {t("defaultAddress")}
                   </span>
                 ) : null}
+                <div className="ms-auto flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setEditing(address);
+                    setAddingAddress(false);
                     setFormError(null);
                   }}
-                  className="ms-auto rounded-full border border-stone-300 px-4 py-2 text-sm font-extrabold text-stone-700 transition hover:bg-stone-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                  className="rounded-full border border-stone-300 px-4 py-2 text-sm font-extrabold text-stone-700 transition hover:bg-stone-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
                   {t("editAddress")}
                 </button>
+                {!address.isDefault ? (
+                  <button
+                    type="button"
+                    onClick={() => void setDefaultAddress(address.id)}
+                    className="rounded-full border border-primary px-4 py-2 text-sm font-extrabold text-primary"
+                  >
+                    {t("setDefaultAddress")}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void removeAddress(address.id)}
+                  className="rounded-full border border-red-300 bg-red-50 px-4 py-2 text-sm font-extrabold text-red-800 dark:border-red-400 dark:bg-red-950 dark:text-red-100"
+                >
+                  {t("deleteAddress")}
+                </button>
+                </div>
               </div>
               {address.recipientName ? (
                 <p className="mt-2 text-sm font-bold text-stone-800 dark:text-gray-100">{address.recipientName}</p>
@@ -351,6 +396,7 @@ export default function ProfileAccount() {
             </article>
           ))}
 
+          {editing || addingAddress ? (
           <AddressForm
             key={editing?.id ?? `new-${addressFormKey}`}
             initialData={editing}
@@ -358,20 +404,57 @@ export default function ProfileAccount() {
             pending={saving}
             error={formError}
             onSubmit={(values) => void saveAddress(values)}
-            onCancel={
-              editing
-                ? () => {
-                    setEditing(null);
-                    setFormError(null);
-                  }
-                : undefined
-            }
+            onCancel={() => {
+              setEditing(null);
+              setAddingAddress(false);
+              setFormError(null);
+            }}
           />
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(null);
+                setAddingAddress(true);
+                setFormError(null);
+              }}
+              className="rounded-full bg-primary px-5 py-3 text-sm font-extrabold text-white"
+            >
+              {t("addNewAddress")}
+            </button>
+          )}
         </div>
       ) : null}
 
       {tab === "wishlist" && !loading ? (
-        wishlistProducts.length === 0 ? (
+        <>
+        {wishlistProducts.some((product) => (product.stock ?? 0) > 0) ? (
+          <button
+            type="button"
+            onClick={() => {
+              for (const product of wishlistProducts) {
+                if ((product.stock ?? 0) <= 0) continue;
+                addItem(
+                  {
+                    id: product.id,
+                    name: product.name,
+                    nameEn: product.nameEn,
+                    nameZh: product.nameZh,
+                    price: product.salePrice && product.salePrice > 0 ? product.salePrice : product.price,
+                    isWeighed: product.isWeighed,
+                    image: product.image,
+                  },
+                  product.isWeighed ? 0.25 : 1,
+                );
+              }
+              toast.success(t("addedToCart"));
+            }}
+            className="mb-4 rounded-full bg-primary px-5 py-3 text-sm font-extrabold text-white"
+          >
+            {t("addAvailableToCart")}
+          </button>
+        ) : null}
+        {wishlistProducts.length === 0 ? (
           <p className="rounded-3xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm font-bold text-stone-500 dark:border-gray-800 dark:text-gray-400">
             {t("wishlistEmpty")}
           </p>
@@ -381,7 +464,8 @@ export default function ProfileAccount() {
               <ProductCard key={product.id} {...product} image={product.image ?? ""} />
             ))}
           </div>
-        )
+        )}
+        </>
       ) : null}
     </section>
   );
