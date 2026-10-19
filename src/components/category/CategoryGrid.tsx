@@ -84,7 +84,7 @@ export default function CategoryGrid() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
         {categories.map((category) => {
           const label = getLocalizedName(category, language);
-          const Icon = categoryIconFor(category.name);
+          const Icon = categoryIconFor(category.name, category.nameEn, category.nameZh);
 
           return (
             <Link

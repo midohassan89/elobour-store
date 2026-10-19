@@ -158,6 +158,9 @@ const ar: Dictionary = {
   liveChat: "راسل إدارة الماركت",
   chatPlaceholder: "اكتب رسالتك...",
   chatSend: "إرسال",
+  chatAttach: "إرفاق صورة",
+  chatPhoto: "صورة",
+  chatRemovePhoto: "إزالة الصورة",
   loginToWishlist: "سجّل الدخول لحفظ المفضلة.",
   deliveryTo: "التوصيل إلى: {{place}}",
   chooseAddress: "اختر عنوان التوصيل",
@@ -244,6 +247,10 @@ const ar: Dictionary = {
   defaultAddress: "افتراضي",
   loadingAccount: "جارٍ التحميل...",
   accountLoadFailed: "تعذر تحميل بيانات الحساب.",
+  scrollPrevious: "تمرير للخلف",
+  scrollNext: "تمرير للأمام",
+  showAllStrip: "عرض الكل ▾",
+  collapseStrip: "طي ▴",
 };
 
 export default ar;

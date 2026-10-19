@@ -4,11 +4,9 @@ import { useI18n } from "@/components/i18n/LanguageProvider";
 import type { Brand } from "@/types";
 import { getLocalizedName, optionalLocalizedName } from "@/utils/localizedName";
 import { uniqueByArabicName } from "@/utils/uniqueByName";
+import HorizontalScroller from "@/components/ui/HorizontalScroller";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-
-const scrollRowClassName =
-  "mx-auto flex max-w-7xl gap-2 overflow-x-auto whitespace-nowrap px-4 py-3 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden";
 
 function pillClassName(active: boolean) {
   return `shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${
@@ -106,7 +104,7 @@ export default function BrandFilter() {
 
   return (
     <nav aria-label={t("brands")} className="border-b border-stone-200 bg-stone-50 dark:border-gray-800 dark:bg-gray-900">
-      <div className={scrollRowClassName}>
+      <HorizontalScroller className="mx-auto max-w-7xl px-4 py-2 sm:px-6">
         <span className="shrink-0 text-sm font-extrabold text-stone-800 dark:text-gray-100">{t("brands")}</span>
         <button
           type="button"
@@ -131,7 +129,7 @@ export default function BrandFilter() {
             </button>
           );
         })}
-      </div>
+      </HorizontalScroller>
     </nav>
   );
 }

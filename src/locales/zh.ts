@@ -158,6 +158,9 @@ const zh: Dictionary = {
   liveChat: "联系超市",
   chatPlaceholder: "输入消息...",
   chatSend: "发送",
+  chatAttach: "添加图片",
+  chatPhoto: "图片",
+  chatRemovePhoto: "移除图片",
   loginToWishlist: "请先登录以保存收藏。",
   deliveryTo: "配送至：{{place}}",
   chooseAddress: "选择配送地址",
@@ -244,6 +247,10 @@ const zh: Dictionary = {
   defaultAddress: "默认",
   loadingAccount: "加载中...",
   accountLoadFailed: "无法加载账户信息。",
+  scrollPrevious: "向后滚动",
+  scrollNext: "向前滚动",
+  showAllStrip: "查看全部 ▾",
+  collapseStrip: "收起 ▴",
 };
 
 export default zh;

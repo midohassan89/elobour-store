@@ -1,71 +1,82 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Apple,
+  BatteryCharging,
   Beef,
+  BookOpen,
   Candy,
   Carrot,
+  Cigarette,
   Coffee,
   Cookie,
   Croissant,
-  Droplet,
+  CupSoda,
+  Drumstick,
   Fish,
+  Flame,
+  Footprints,
+  GlassWater,
+  Globe,
+  Home,
   IceCreamCone,
   Milk,
   Package,
+  PenTool,
   Plug,
+  Shirt,
   ShoppingBasket,
   Snowflake,
+  Sparkles,
   SprayCan,
   Utensils,
   Wheat,
 } from "lucide-react";
 
 const rules: { match: RegExp; icon: LucideIcon }[] = [
-  { match: /ألبان|جبن|dairy|milk|cheese/i, icon: Milk },
-  { match: /شاي|قهوة|tea|coffee/i, icon: Coffee },
-  { match: /مشروب|عصير|drink|beverage|juice/i, icon: Droplet },
-  { match: /لحم|دجاج|لحوم|meat|beef|chicken/i, icon: Beef },
-  { match: /سمك|مأكولات بحر|fish|seafood/i, icon: Fish },
-  { match: /خضار|فاكهة|خضروات|fruit|produce|veg/i, icon: Apple },
-  { match: /مجمد|frozen/i, icon: Snowflake },
-  { match: /آيس|آيسكريم|ice\s*cream/i, icon: IceCreamCone },
-  { match: /بقالة|grocery|supermarket/i, icon: ShoppingBasket },
-  { match: /منظف|تنظيف|عناية|cleaning|detergent|personal/i, icon: SprayCan },
-  { match: /مكرون|أرز|حبوب|نشو|pasta|rice|grain/i, icon: Wheat },
-  { match: /حلو|بسكويت|تسال|سناكس|snack|sweet|cookie/i, icon: Cookie },
+  { match: /أحذي|احذي|حذاء|shoes?|footwear/i, icon: Footprints },
+  { match: /ملابس|shirt|cloth(?:es|ing)?/i, icon: Shirt },
+  { match: /سجائر|سيجار|دخان|cigarette|tobacco/i, icon: Cigarette },
+  { match: /بطاري|مستهلك|battery|consumable/i, icon: BatteryCharging },
+  { match: /مكتبي|قرطاسي|stationery|office/i, icon: PenTool },
+  { match: /كتاب|book/i, icon: BookOpen },
+  { match: /كهرب|electric|plug/i, icon: Plug },
+  { match: /أدوات منزل|منزلية|homeware|\bhome\b/i, icon: Home },
+  { match: /منظف|تنظيف|cleaning|detergent/i, icon: SprayCan },
+  { match: /عناية|عطور|تجميل|personal care|beauty/i, icon: Sparkles },
+  { match: /أسماك|الاسماك|سمك|مأكولات بحر|fish|seafood/i, icon: Fish },
+  { match: /لحم|لحوم|meat|beef/i, icon: Beef },
+  { match: /دواجن|دجاج|فراخ|poultry|chicken/i, icon: Drumstick },
+  { match: /ألبان|البان|أجبان|اجبان|جبن|dairy|milk|cheese/i, icon: Milk },
+  { match: /فاكهة|فواكه|fruit/i, icon: Apple },
+  { match: /خضار|خضروات|vegetable|produce|\bveg/i, icon: Carrot },
   { match: /مخبوز|خبز|bakery|bread/i, icon: Croissant },
-  { match: /آسيو|صين|مستورد|asian|import/i, icon: Utensils },
+  { match: /شاي|قهوة|tea|coffee/i, icon: Coffee },
+  { match: /عصائر|عصير|juice/i, icon: GlassWater },
+  { match: /مشروب|drink|beverage|soda/i, icon: CupSoda },
+  { match: /آيس|ايسكريم|ice\s*cream/i, icon: IceCreamCone },
+  { match: /تسال|سناكس|بسكويت|snack|cookie/i, icon: Cookie },
+  { match: /حلويات|حلوى|شوكول|candy|chocolate/i, icon: Candy },
+  { match: /آسيو|اسيو|صين|asian|chinese/i, icon: Utensils },
+  { match: /مستورد|import/i, icon: Globe },
   { match: /معلب|صلص|canned|sauce/i, icon: Package },
-  { match: /كهرب|أدوات منزل|home|electric/i, icon: Plug },
-  { match: /حلوى|candy|chocolate/i, icon: Candy },
-  { match: /جزر|carrot/i, icon: Carrot },
+  { match: /مكرون|أرز|ارز|حبوب|نشو|pasta|rice|grain|starch/i, icon: Wheat },
+  { match: /مجمد|frozen/i, icon: Snowflake },
+  { match: /بقالة|grocery|supermarket/i, icon: ShoppingBasket },
+  { match: /^عام$/m, icon: ShoppingBasket },
+  { match: /شعلة|flame/i, icon: Flame },
 ];
 
-const fallbacks: LucideIcon[] = [
-  Apple,
-  Beef,
-  Fish,
-  Milk,
-  Cookie,
-  Wheat,
-  SprayCan,
-  Croissant,
-  Utensils,
-  Coffee,
-  ShoppingBasket,
-  Snowflake,
-];
-
-export function categoryIconFor(name: string): LucideIcon {
-  const normalized = name.trim();
+export function categoryIconFor(...names: Array<string | null | undefined>): LucideIcon {
+  const haystack = names
+    .map((name) => name?.trim())
+    .filter((name): name is string => Boolean(name))
+    .join("\n");
 
   for (const rule of rules) {
-    if (rule.match.test(normalized)) {
+    if (rule.match.test(haystack)) {
       return rule.icon;
     }
   }
 
-  let hash = 0;
-  for (const char of normalized) hash = (hash + char.charCodeAt(0)) % fallbacks.length;
-  return fallbacks[hash] ?? ShoppingBasket;
+  return ShoppingBasket;
 }

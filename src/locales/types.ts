@@ -168,6 +168,9 @@ export type Dictionary = {
   liveChat: string;
   chatPlaceholder: string;
   chatSend: string;
+  chatAttach: string;
+  chatPhoto: string;
+  chatRemovePhoto: string;
   loginToWishlist: string;
   deliveryTo: string;
   chooseAddress: string;
@@ -254,6 +257,10 @@ export type Dictionary = {
   defaultAddress: string;
   loadingAccount: string;
   accountLoadFailed: string;
+  scrollPrevious: string;
+  scrollNext: string;
+  showAllStrip: string;
+  collapseStrip: string;
 };
 
 export type TranslationKey = keyof Dictionary;

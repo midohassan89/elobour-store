@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { isChatAttachmentPath } from "@/lib/chatAttachment";
 import { customerJson, customerOptions, resolveRequestCustomer } from "@/lib/customerRequest";
 import { langFrom, translateTrio, type LangCode } from "@/lib/translateText";
 import { prisma } from "@/lib/prisma";
@@ -13,8 +14,19 @@ type ChatRow = {
   textAr: string;
   textEn: string;
   textZh: string;
+  attachmentUrl: string | null;
+  attachmentType: string | null;
   createdAt: string | Date;
 };
+
+function attachmentFields(url: string | null, type: string | null) {
+  const attachmentUrl = url?.trim() || null;
+  const attachmentType = type === "IMAGE" || type === "FILE" ? type : null;
+  return {
+    attachmentUrl,
+    attachmentType: attachmentUrl ? attachmentType ?? "FILE" : null,
+  };
+}
 
 function visibleText(row: Pick<ChatRow, "textAr" | "textEn" | "textZh">, lang: LangCode) {
   if (lang === "en") return row.textEn || row.textAr;
@@ -33,7 +45,8 @@ export async function GET(request: Request) {
     WHERE customerId = ${customer.id} AND senderRole = 'ADMIN' AND isReadByCustomer = 0
   `;
   const rows = await prisma.$queryRaw<ChatRow[]>`
-    SELECT id, senderRole, originalText, originalLang, textAr, textEn, textZh, createdAt
+    SELECT id, senderRole, originalText, originalLang, textAr, textEn, textZh,
+           attachmentUrl, attachmentType, createdAt
     FROM ChatMessage
     WHERE customerId = ${customer.id}
     ORDER BY createdAt ASC
@@ -51,13 +64,22 @@ export async function GET(request: Request) {
       textZh: row.textZh,
       originalText: row.originalText,
       originalLang: row.originalLang,
+      attachmentUrl: row.attachmentUrl,
+      attachmentType: row.attachmentType,
       createdAt: new Date(row.createdAt).toISOString(),
     })),
   });
 }
 
 export async function POST(request: Request) {
-  let body: { text?: unknown; lang?: unknown; customerId?: unknown; phone?: unknown } = {};
+  let body: {
+    text?: unknown;
+    lang?: unknown;
+    customerId?: unknown;
+    phone?: unknown;
+    attachmentUrl?: unknown;
+    attachmentType?: unknown;
+  } = {};
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -65,23 +87,36 @@ export async function POST(request: Request) {
   }
 
   const text = String(body.text ?? "").trim();
-  if (!text) return customerJson({ error: "text is required" }, 400);
+  const attachment = attachmentFields(
+    typeof body.attachmentUrl === "string" ? body.attachmentUrl : "",
+    typeof body.attachmentType === "string" ? body.attachmentType : "",
+  );
+  if (!text && !attachment.attachmentUrl) {
+    return customerJson({ error: "text is required" }, 400);
+  }
+  if (attachment.attachmentUrl && !isChatAttachmentPath(attachment.attachmentUrl)) {
+    return customerJson({ error: "Invalid attachment" }, 400);
+  }
 
   const customer = await resolveRequestCustomer(request, body);
   if (!customer) return customerJson({ error: "Unauthorized" }, 401);
 
   const lang = langFrom(body.lang ?? request.headers.get("x-lang"));
-  const translated = await translateTrio(text, lang);
+  const translated = text
+    ? await translateTrio(text, lang)
+    : { textAr: "", textEn: "", textZh: "", originalText: "", originalLang: lang };
   const id = randomUUID();
   const createdAt = new Date().toISOString();
 
   await prisma.$executeRaw`
     INSERT INTO ChatMessage (
       id, customerId, senderRole, originalText, originalLang,
-      textAr, textEn, textZh, isReadByAdmin, isReadByCustomer, createdAt
+      textAr, textEn, textZh, attachmentUrl, attachmentType,
+      isReadByAdmin, isReadByCustomer, createdAt
     ) VALUES (
       ${id}, ${customer.id}, 'CUSTOMER', ${text}, ${lang},
       ${translated.textAr}, ${translated.textEn}, ${translated.textZh},
+      ${attachment.attachmentUrl}, ${attachment.attachmentType},
       0, 1, ${createdAt}
     )
   `;
@@ -93,7 +128,13 @@ export async function POST(request: Request) {
         id,
         senderRole: "CUSTOMER",
         text: visibleText(translated, lang),
-        ...translated,
+        textAr: translated.textAr,
+        textEn: translated.textEn,
+        textZh: translated.textZh,
+        originalText: text,
+        originalLang: lang,
+        attachmentUrl: attachment.attachmentUrl,
+        attachmentType: attachment.attachmentType,
         createdAt,
       },
     },

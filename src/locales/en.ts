@@ -158,6 +158,9 @@ const en: Dictionary = {
   liveChat: "Message the market",
   chatPlaceholder: "Write a message...",
   chatSend: "Send",
+  chatAttach: "Attach a photo",
+  chatPhoto: "Photo",
+  chatRemovePhoto: "Remove photo",
   loginToWishlist: "Sign in to save your wishlist.",
   deliveryTo: "Deliver to: {{place}}",
   chooseAddress: "Choose a delivery address",
@@ -244,6 +247,10 @@ const en: Dictionary = {
   defaultAddress: "Default",
   loadingAccount: "Loading...",
   accountLoadFailed: "Could not load your account.",
+  scrollPrevious: "Scroll back",
+  scrollNext: "Scroll forward",
+  showAllStrip: "Show all ▾",
+  collapseStrip: "Collapse ▴",
 };
 
 export default en;

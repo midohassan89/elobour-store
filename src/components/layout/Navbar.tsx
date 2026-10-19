@@ -178,9 +178,42 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 border-b border-primary-100 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-950/95">
       <div className="border-b border-stone-100 bg-stone-50 dark:border-gray-800 dark:bg-gray-900">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-1.5 sm:px-6">
-          <p className="truncate text-xs font-bold text-stone-700 dark:text-gray-300">
-            {authReady && user ? (clockReady ? greeting : t("greetingEveningPlain")) : t("storeName")}
-          </p>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <p className="min-w-0 truncate text-xs font-bold text-stone-700 dark:text-gray-300">
+              {authReady && user ? (clockReady ? greeting : t("greetingEveningPlain")) : t("storeName")}
+            </p>
+            {user && savedAddresses.length > 0 ? (
+              <div className="relative min-w-0">
+                <button
+                  type="button"
+                  aria-expanded={addressOpen}
+                  onClick={() => setAddressOpen((open) => !open)}
+                  className="inline-flex max-w-[260px] items-center gap-1 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-extrabold text-stone-800 md:max-w-[340px] dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                >
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="truncate">{t("deliveryTo", { place: addressPlace })}</span>
+                </button>
+                {addressOpen ? (
+                  <div className="absolute z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900">
+                    {savedAddresses.map((address) => (
+                      <button
+                        key={address.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAddressId(address.id);
+                          window.localStorage.setItem("egychina-address", address.id);
+                          setAddressOpen(false);
+                        }}
+                        className="block w-full px-4 py-3 text-start text-sm font-bold text-stone-800 hover:bg-stone-50 dark:text-gray-100 dark:hover:bg-gray-800"
+                      >
+                        {[address.title, address.zoneName || address.city].filter(Boolean).join(" - ")}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             {authReady && user ? (
               <button
@@ -225,39 +258,7 @@ export default function Navbar() {
           {t("storeName")}
         </Link>
 
-        {user && savedAddresses.length > 0 ? (
-          <div className="relative order-4 w-full min-w-0 md:order-3 md:w-auto">
-            <button
-              type="button"
-              aria-expanded={addressOpen}
-              onClick={() => setAddressOpen((open) => !open)}
-              className="inline-flex max-w-full items-center gap-1 rounded-full border border-stone-200 px-3 py-2 text-xs font-extrabold text-stone-800 dark:border-gray-800 dark:text-gray-100"
-            >
-              <MapPin className="h-4 w-4 shrink-0 text-primary" />
-              <span className="truncate">{t("deliveryTo", { place: addressPlace })}</span>
-            </button>
-            {addressOpen ? (
-              <div className="absolute z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900">
-                {savedAddresses.map((address) => (
-                  <button
-                    key={address.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedAddressId(address.id);
-                      window.localStorage.setItem("egychina-address", address.id);
-                      setAddressOpen(false);
-                    }}
-                    className="block w-full px-4 py-3 text-start text-sm font-bold text-stone-800 hover:bg-stone-50 dark:text-gray-100 dark:hover:bg-gray-800"
-                  >
-                    {[address.title, address.zoneName || address.city].filter(Boolean).join(" - ")}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div className="order-5 w-full min-w-0 md:order-4 md:flex-1">
+        <div className="order-4 w-full min-w-0 lg:order-3 lg:mx-4 lg:max-w-2xl lg:flex-1">
           <Suspense
             fallback={
               <div className="h-12 w-full rounded-full border border-stone-200 bg-stone-50 sm:h-14 dark:border-gray-800 dark:bg-gray-900" />

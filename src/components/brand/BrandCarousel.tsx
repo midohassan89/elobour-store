@@ -5,6 +5,7 @@ import type { Brand } from "@/types";
 import { brandImageUrl } from "@/utils/brandVisual";
 import { getLocalizedName, optionalLocalizedName } from "@/utils/localizedName";
 import { uniqueByArabicName } from "@/utils/uniqueByName";
+import HorizontalScroller from "@/components/ui/HorizontalScroller";
 import { Store } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -99,7 +100,7 @@ export default function BrandCarousel() {
           className="absolute -bottom-2 start-0 h-1 w-10 rounded-full bg-green-600"
         />
       </h2>
-      <div className="flex gap-3 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <HorizontalScroller>
         {brands.map((brand) => {
           const imageUrl = brandImageUrl(brand.image);
           const label = getLocalizedName(brand, language);
@@ -119,7 +120,7 @@ export default function BrandCarousel() {
             </Link>
           );
         })}
-      </div>
+      </HorizontalScroller>
     </section>
   );
 }
