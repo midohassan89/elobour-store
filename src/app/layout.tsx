@@ -14,6 +14,8 @@ const cairo = Cairo({
   display: "swap",
 });
 
+const STORE_ORIGIN = "https://echinamart.com";
+
 async function readLanguage(): Promise<Language> {
   const cookieStore = await cookies();
   const saved = cookieStore.get("lang")?.value;
@@ -25,8 +27,18 @@ export async function generateMetadata(): Promise<Metadata> {
   const dictionary = dictionaries[language];
 
   return {
+    metadataBase: new URL(STORE_ORIGIN),
     title: dictionary.storeName,
     description: dictionary.checkoutIntro,
+    alternates: { canonical: STORE_ORIGIN },
+    openGraph: {
+      title: dictionary.storeName,
+      description: dictionary.checkoutIntro,
+      url: STORE_ORIGIN,
+      siteName: dictionary.storeName,
+      locale: language === "zh" ? "zh_CN" : language === "en" ? "en_US" : "ar_EG",
+      type: "website",
+    },
   };
 }
 

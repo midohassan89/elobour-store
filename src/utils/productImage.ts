@@ -1,10 +1,15 @@
-const ERP_ORIGIN = "https://erp.elobour.store";
+const ERP_ORIGIN = "https://erp.echinamart.com";
 const PLACEHOLDER = "/placeholder.png";
+
+function rewriteLegacyHost(rawUrl: string) {
+  return rawUrl.replace(/https?:\/\/(?:www\.)?(?:erp\.)?elobour\.store/gi, ERP_ORIGIN);
+}
 
 export function getNormalizedUrl(rawUrl: string | null | undefined) {
   if (!rawUrl || rawUrl === PLACEHOLDER) return PLACEHOLDER;
 
-  const match = rawUrl.match(/(\/uploads\/.*)/);
+  const source = rewriteLegacyHost(rawUrl);
+  const match = source.match(/(\/uploads\/.*)/);
   if (match) {
     const pathAfterUploads = match[1];
 
@@ -19,7 +24,7 @@ export function getNormalizedUrl(rawUrl: string | null | undefined) {
     }
   }
 
-  return rawUrl;
+  return source;
 }
 
 /** Product photos load from the ERP. Empty values stay empty so the card can show its placeholder. */

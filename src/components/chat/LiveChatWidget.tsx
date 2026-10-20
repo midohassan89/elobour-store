@@ -23,9 +23,13 @@ function messageText(message: ChatMessage, language: Language) {
 }
 
 function attachmentSrc(url: string) {
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  const base = (process.env.NEXT_PUBLIC_API_URL || "https://erp.elobour.store").replace(/\/$/, "");
-  return `${base}${url.startsWith("/") ? url : `/${url}`}`;
+  const rewritten = url.replace(
+    /https?:\/\/(?:www\.)?(?:erp\.)?elobour\.store/gi,
+    "https://erp.echinamart.com",
+  );
+  if (rewritten.startsWith("http://") || rewritten.startsWith("https://")) return rewritten;
+  const base = (process.env.NEXT_PUBLIC_API_URL || "https://erp.echinamart.com").replace(/\/$/, "");
+  return `${base}${rewritten.startsWith("/") ? rewritten : `/${rewritten}`}`;
 }
 
 export default function LiveChatWidget() {

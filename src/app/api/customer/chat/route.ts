@@ -28,6 +28,62 @@ function attachmentFields(url: string | null, type: string | null) {
   };
 }
 
+function erpConfig() {
+  const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+  const apiKey = process.env.STORE_API_KEY ?? "";
+  if (!base || !apiKey) return null;
+  return { base, apiKey };
+}
+
+function erpHeaders(phone: string, lang: string, apiKey: string) {
+  return {
+    "Content-Type": "application/json",
+    "x-api-key": apiKey,
+    "x-customer-phone": phone,
+    "x-phone": phone,
+    "x-lang": lang,
+  };
+}
+
+async function erpChatMessages(phone: string, lang: string) {
+  const config = erpConfig();
+  if (!config || !phone) return null;
+  const response = await fetch(`${config.base}/api/customer/chat?lang=${encodeURIComponent(lang)}`, {
+    headers: erpHeaders(phone, lang, config.apiKey),
+    cache: "no-store",
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  const data = (await response.json()) as { messages?: ChatRow[] };
+  return Array.isArray(data.messages) ? data.messages : [];
+}
+
+async function erpSendChat(input: {
+  phone: string;
+  name: string | null;
+  text: string;
+  lang: string;
+  attachmentUrl: string | null;
+  attachmentType: string | null;
+}) {
+  const config = erpConfig();
+  if (!config || !input.phone) return null;
+  const response = await fetch(`${config.base}/api/customer/chat`, {
+    method: "POST",
+    headers: erpHeaders(input.phone, input.lang, config.apiKey),
+    body: JSON.stringify({
+      text: input.text,
+      lang: input.lang,
+      phone: input.phone,
+      name: input.name,
+      attachmentUrl: input.attachmentUrl ?? "",
+      attachmentType: input.attachmentType,
+    }),
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  const data = (await response.json()) as { message?: ChatRow };
+  return data.message ?? null;
+}
+
 function visibleText(row: Pick<ChatRow, "textAr" | "textEn" | "textZh">, lang: LangCode) {
   if (lang === "en") return row.textEn || row.textAr;
   if (lang === "zh") return row.textZh || row.textAr;
@@ -39,6 +95,25 @@ export async function GET(request: Request) {
   if (!customer) return customerJson({ error: "Unauthorized" }, 401);
 
   const lang = langFrom(new URL(request.url).searchParams.get("lang") ?? request.headers.get("x-lang"));
+  const remote = await erpChatMessages(customer.phone, lang);
+  if (remote) {
+    return customerJson({
+      ok: true,
+      messages: remote.map((row) => ({
+        id: row.id,
+        senderRole: row.senderRole,
+        text: visibleText(row, lang),
+        textAr: row.textAr,
+        textEn: row.textEn,
+        textZh: row.textZh,
+        originalText: row.originalText,
+        originalLang: row.originalLang,
+        attachmentUrl: row.attachmentUrl,
+        attachmentType: row.attachmentType,
+        createdAt: new Date(row.createdAt).toISOString(),
+      })),
+    });
+  }
   await prisma.$executeRaw`
     UPDATE ChatMessage
     SET isReadByCustomer = 1
@@ -102,6 +177,35 @@ export async function POST(request: Request) {
   if (!customer) return customerJson({ error: "Unauthorized" }, 401);
 
   const lang = langFrom(body.lang ?? request.headers.get("x-lang"));
+  const remote = await erpSendChat({
+    phone: customer.phone,
+    name: customer.name,
+    text,
+    lang,
+    attachmentUrl: attachment.attachmentUrl,
+    attachmentType: attachment.attachmentType,
+  });
+  if (remote) {
+    return customerJson(
+      {
+        ok: true,
+        message: {
+          id: remote.id,
+          senderRole: remote.senderRole || "CUSTOMER",
+          text: visibleText(remote, lang),
+          textAr: remote.textAr,
+          textEn: remote.textEn,
+          textZh: remote.textZh,
+          originalText: text,
+          originalLang: lang,
+          attachmentUrl: remote.attachmentUrl ?? attachment.attachmentUrl,
+          attachmentType: remote.attachmentType ?? attachment.attachmentType,
+          createdAt: remote.createdAt ? new Date(remote.createdAt).toISOString() : new Date().toISOString(),
+        },
+      },
+      201,
+    );
+  }
   const translated = text
     ? await translateTrio(text, lang)
     : { textAr: "", textEn: "", textZh: "", originalText: "", originalLang: lang };
