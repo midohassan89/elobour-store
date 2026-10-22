@@ -1,5 +1,6 @@
 "use client";
 
+import BrandLogo from "@/components/layout/BrandLogo";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import Link from "next/link";
 
@@ -10,7 +11,10 @@ export default function Footer() {
     <footer className="mt-auto bg-stone-950 text-stone-300 dark:text-gray-400">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-3">
         <section>
-          <h2 className="text-sm font-bold text-white">{t("storeName")}</h2>
+          <h2 className="sr-only">{t("storeName")}</h2>
+          <div className="inline-flex rounded-2xl bg-white px-3 py-2">
+            <BrandLogo variant="footer" />
+          </div>
           <ul className="mt-4 space-y-2 text-sm">
             <li>
               <Link href="/" className="transition hover:text-white">

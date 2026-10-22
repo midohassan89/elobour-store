@@ -11,6 +11,7 @@ import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { useWishlist } from "@/components/wishlist/WishlistProvider";
+import BrandLogo from "@/components/layout/BrandLogo";
 import LiveSearch from "@/components/layout/LiveSearch";
 import type { Category } from "@/types";
 import { useAuthStore } from "@/store/authStore";
@@ -253,9 +254,10 @@ export default function Navbar() {
 
         <Link
           href="/"
-          className="order-2 shrink-0 whitespace-nowrap text-lg font-extrabold tracking-tight text-primary sm:text-2xl"
+          aria-label={t("storeName")}
+          className="order-2 inline-flex shrink-0 items-center rounded-xl dark:bg-white dark:px-1.5 dark:py-0.5"
         >
-          {t("storeName")}
+          <BrandLogo variant="header" />
         </Link>
 
         <div className="order-4 w-full min-w-0 lg:order-3 lg:mx-4 lg:max-w-2xl lg:flex-1">

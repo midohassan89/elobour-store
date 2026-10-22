@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Barcode from "react-barcode";
+import BrandLogo from "@/components/layout/BrandLogo";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import { useAuthStore } from "@/store/authStore";
@@ -71,7 +72,9 @@ export default function LoyaltyCardModal({ open, onClose }: LoyaltyCardModalProp
           >
             <X className="h-5 w-5" />
           </button>
-          <p className="text-sm font-bold text-primary-50">{t("storeName")}</p>
+          <div className="inline-flex rounded-xl bg-white px-2.5 py-1.5">
+            <BrandLogo variant="card" />
+          </div>
           <h2 id="loyalty-card-title" className="mt-2 text-2xl font-extrabold">
             {t("loyaltyCard")}
           </h2>
