@@ -31,6 +31,21 @@ export default function Footer() {
                 {t("offers")}
               </Link>
             </li>
+            <li>
+              <Link href="/privacy" className="transition hover:text-white">
+                {t("privacyTitle")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/delete-account" className="transition hover:text-white">
+                {t("deleteAccountTitle")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/support" className="transition hover:text-white">
+                {t("supportTitle")}
+              </Link>
+            </li>
           </ul>
         </section>
 

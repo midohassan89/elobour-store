@@ -1,4 +1,5 @@
 import { customerJson, customerOptions } from "@/lib/customerRequest";
+import { accountState, findCustomerAccount } from "@/lib/customerPassword";
 import { normalizePhone } from "@/lib/customers";
 import { prisma } from "@/lib/prisma";
 
@@ -13,25 +14,23 @@ export async function POST(request: Request) {
   }
 
   const raw = String(body.phone ?? "").trim();
-  const phone = normalizePhone(raw) || raw;
+  const phone = normalizePhone(raw);
   if (!phone) return customerJson({ error: "phone is required" }, 400);
 
-  const rows = await prisma.$queryRaw<Array<{ name: string | null; pinHash: string | null }>>`
-    SELECT name, pinHash
-    FROM Customer
-    WHERE phone = ${phone}
-       OR phone = ${raw}
-       OR phone LIKE ${`%${phone.slice(-10)}`}
-    LIMIT 1
-  `;
-  const customer = rows[0];
-  const name = customer?.name?.trim() || null;
+  const account = await findCustomerAccount(raw);
+  const state = accountState(account);
+  const pinRows = account
+    ? await prisma.$queryRaw<Array<{ pinHash: string | null }>>`
+        SELECT pinHash FROM Customer WHERE id = ${account.id} LIMIT 1
+      `
+    : [];
 
   return customerJson({
-    exists: Boolean(customer),
-    hasName: Boolean(name),
-    name,
-    hasPin: Boolean(customer?.pinHash),
+    exists: state.exists,
+    hasPassword: state.hasPassword,
+    hasName: state.hasName,
+    name: state.name,
+    hasPin: Boolean(pinRows[0]?.pinHash),
   });
 }
 

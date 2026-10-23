@@ -10,7 +10,7 @@ export type AuthUser = {
 type AuthState = {
   user: AuthUser | null;
   ready: boolean;
-  login: (phone: string, name?: string) => Promise<"ok" | "needs_name">;
+  login: (input: { phone: string; password: string; name?: string }) => Promise<void>;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
 };
@@ -51,21 +51,16 @@ function toAuthUser(value: unknown): AuthUser | null {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   ready: false,
-  login: async (phone, name) => {
+  login: async ({ phone, password, name }) => {
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, name }),
+      body: JSON.stringify({ phone, password, name: name?.trim() || undefined }),
     });
     const payload = (await response.json().catch(() => null)) as {
       user?: unknown;
       error?: unknown;
-      needsName?: unknown;
     } | null;
-
-    if (response.ok && payload?.needsName === true) {
-      return "needs_name";
-    }
 
     const user = toAuthUser(payload?.user);
 
@@ -76,12 +71,11 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? data.error
           : (data.error as { message?: string } | undefined)?.message ||
             (data as { message?: string }).message ||
-            "تعذر تسجيل الدخول";
+            "failed";
       throw new Error(errorMessage);
     }
 
     set({ user, ready: true });
-    return "ok";
   },
   logout: async () => {
     await fetch("/api/auth/logout", { method: "POST" });
